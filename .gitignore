@@ -1,0 +1,16 @@
+.vscode/
+*.bacpac
+*.ipynb_checkpoints
+*.pyc
+__pycache__/
+env/
+venv/
+*.sqlite3
+*.log
+.DS_Store
+.idea/
+*.iml
+*.class
+out/
+target/
+*.jar
