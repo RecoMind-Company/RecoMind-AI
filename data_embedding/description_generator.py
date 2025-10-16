@@ -2,7 +2,8 @@
 
 from langchain_openai import ChatOpenAI
 import json
-import config
+from shared import config
+from . import embedding_config 
 
 class DescriptionGenerator:
     """
@@ -15,9 +16,9 @@ class DescriptionGenerator:
             raise ValueError("OPENROUTER_API_KEY not found. Cannot generate descriptions.")
             
         self.llm_model = ChatOpenAI(
-            model=config.LLM_MODEL_NAME,
-            openai_api_key=config.OPENROUTER_API_KEY,
-            openai_api_base=config.OPENROUTER_API_BASE,
+            model=embedding_config.LLM_MODEL_NAME,
+            openai_api_key=embedding_config.OPENROUTER_API_KEY,
+            openai_api_base=embedding_config.OPENROUTER_API_BASE,
             temperature=0.1
         )
 
@@ -67,7 +68,7 @@ class DescriptionGenerator:
         print(f"Starting batch description generation for {len(tables_data)} tables...")
         
         # Process data in chunks to generate descriptions
-        for i, chunk in enumerate(self._chunk_list(tables_data, config.INGESTION_CHUNK_SIZE)):
+        for i, chunk in enumerate(self._chunk_list(tables_data, embedding_config.INGESTION_CHUNK_SIZE)):
             print(f"\n--- Processing Batch {i+1} ({len(chunk)} tables) ---")
             
             batch_schema_text = "\n".join([f"--- Table: {item['full_name']} ---\n{item['schema_text']}\n" for item in chunk])

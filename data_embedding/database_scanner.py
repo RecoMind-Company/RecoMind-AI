@@ -2,7 +2,7 @@
 
 import pyodbc
 from collections import defaultdict
-import config
+from shared import config 
 
 class DatabaseScanner:
     """

@@ -1,4 +1,4 @@
-# embedding/config.py
+# shared/config.py
 
 import os
 from dotenv import load_dotenv
@@ -24,7 +24,7 @@ VECTOR_DB_USER = os.getenv("VECTOR_DB_USER")
 VECTOR_DB_PASSWORD = os.getenv("VECTOR_DB_PASSWORD")
 
 # =======================================================
-# 3. LLM Settings (OpenRouter)
+# 3. LLM For data-embedding description generation
 # =======================================================
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"

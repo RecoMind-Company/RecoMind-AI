@@ -2,7 +2,8 @@
 
 import psycopg2
 from sentence_transformers import SentenceTransformer
-import config
+from shared import config
+from . import embedding_config
 
 class VectorStore:
     """
@@ -11,8 +12,8 @@ class VectorStore:
     """
     def __init__(self):
         """Initializes the embedding model and database connection details."""
-        print(f"Loading embedding model: {config.EMBEDDING_MODEL_NAME}...")
-        self.embedding_model = SentenceTransformer(config.EMBEDDING_MODEL_NAME)
+        print(f"Loading embedding model: {embedding_config.EMBEDDING_MODEL_NAME}...")
+        self.embedding_model = SentenceTransformer(embedding_config.EMBEDDING_MODEL_NAME)
         print("Embedding Model loaded successfully.")
         
         self.conn_details = {
