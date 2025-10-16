@@ -2,7 +2,7 @@
 
 import psycopg2
 from sentence_transformers import SentenceTransformer
-from shared import config
+from ..shared import config
 from . import embedding_config
 
 class VectorStore:

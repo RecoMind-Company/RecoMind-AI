@@ -1,8 +1,8 @@
 # auto_analyst/graph/workflow.py
 
 from langgraph.graph import StateGraph, END
-from auto_analyst.graph.state import GraphState
-from auto_analyst.steps import step_01_load_data, step_02_clean_data, step_03_kpi_analysis, step_04_reporting, step_05_output
+from ..graph.state import GraphState
+from ..steps import step_01_load_data, step_02_clean_data, step_03_kpi_analysis, step_04_reporting, step_05_output
 
 def get_analysis_app():
     workflow = StateGraph(GraphState)

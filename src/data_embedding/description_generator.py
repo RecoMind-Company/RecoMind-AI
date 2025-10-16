@@ -2,7 +2,7 @@
 
 from langchain_openai import ChatOpenAI
 import json
-from shared import config
+from ..shared import config
 from . import embedding_config 
 
 class DescriptionGenerator:
@@ -12,7 +12,7 @@ class DescriptionGenerator:
     """
     def __init__(self):
         """Initializes the LLM client from the config."""
-        if not config.OPENROUTER_API_KEY:
+        if not embedding_config.OPENROUTER_API_KEY:
             raise ValueError("OPENROUTER_API_KEY not found. Cannot generate descriptions.")
             
         self.llm_model = ChatOpenAI(

@@ -3,7 +3,7 @@
 from crewai import Crew, Process
 
 # Import the shared application config using a direct, absolute path
-from shared import config
+from ....shared import config
 
 # Import the component builders from the sibling components file
 from .crew_components import get_llm, get_configured_agents, get_tasks

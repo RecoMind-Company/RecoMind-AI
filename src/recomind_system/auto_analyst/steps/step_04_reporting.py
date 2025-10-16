@@ -1,6 +1,6 @@
 import json
-from auto_analyst.graph.state import GraphState
-from auto_analyst.core.config import llm_model
+from ..graph.state import GraphState
+from ..core.config import llm_model
 
 # --- Node Functions --- 
 

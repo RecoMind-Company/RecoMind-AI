@@ -1,6 +1,6 @@
 import os
 import json
-from auto_analyst.graph.state import GraphState
+from ..graph.state import GraphState
 
 # --- Node Functions --- (Copied from your code)
 

@@ -1,8 +1,8 @@
 # auto_analyst/steps/step_01_load_data.py
 
 import pandas as pd
-from auto_analyst.graph.state import GraphState
-from auto_analyst.core.config import llm_model
+from ..graph.state import GraphState
+from ..core.config import llm_model
 
 def classify_data_with_llm(columns: list) -> str:
     """

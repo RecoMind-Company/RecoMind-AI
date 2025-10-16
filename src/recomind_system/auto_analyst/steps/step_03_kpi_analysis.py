@@ -2,9 +2,9 @@ import json
 import re
 import pandas as pd
 import numpy as np
-from auto_analyst.graph.state import GraphState
-from auto_analyst.core.config import llm_model
-from auto_analyst.utils.json_parser import extract_and_parse_json
+from ..graph.state import GraphState
+from ..core.config import llm_model
+from ..utils.json_parser import extract_and_parse_json
 
 # --- Node Functions --- (Copied from your code)
 
