@@ -8,7 +8,7 @@ def fetch_source_db_settings():
     """
     Fetches the source database connection details from the backend API.
     """
-    if not config.API_URL or not config.API_AUTH_TOKEN:
+    if not config.API_URL or not config.API_AUTH_TOKEN: 
         raise ValueError("API_URL and API_AUTH_TOKEN must be set in the .env file.")
 
     headers = {
