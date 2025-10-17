@@ -20,8 +20,12 @@ def run_full_pipeline():
     3. Runs LangGraph to analyze the DataFrame and generate a report.
     """
     # === KICKOFF STAGE 1: CrewAI ===
-    # Simply call the function to get a ready-to-use crew
-    recomind_crew = create_crew()
+    # Unpack the crew object and the settings dictionary
+    recomind_crew, source_db_settings = create_crew()
+
+    if not recomind_crew:
+        print("❌ Crew creation failed. Aborting pipeline.")
+        return
 
     user_request = input("Enter your data request (e.g., 'Sales overview' or 'Active Employees'): ")
     print(f"\n🚀 STAGE 1: RUNNING DATA COLLECTION CREW FOR: '{user_request}'")
@@ -36,8 +40,8 @@ def run_full_pipeline():
 
     # === EXECUTE QUERY ===
     print(f"\n🚀 STAGE 2: EXECUTING QUERY TO FETCH DATA...")
-    # Pass the central config object to the executor
-    data_df = db_executor.execute_query_to_dataframe(sql_query, config)
+    # Pass the correct settings dictionary to the executor
+    data_df = db_executor.execute_query_to_dataframe(sql_query, source_db_settings)
 
     if data_df is None or data_df.empty:
         print(f"\n❌ PIPELINE HALTED: Query execution failed or returned no data.")
@@ -57,6 +61,6 @@ def run_full_pipeline():
         print(final_state["analysis_report"])
 
     print("\n🎉 FULL PIPELINE FINISHED SUCCESSFULLY!")
-
+    
 if __name__ == "__main__":
     run_full_pipeline()

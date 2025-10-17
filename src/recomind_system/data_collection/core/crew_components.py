@@ -3,6 +3,7 @@
 import os
 from crewai.llm import LLM
 from typing import List, Dict, Any
+from sentence_transformers import SentenceTransformer
 
 # Import base agents and tasks that have no configuration yet
 from .agents import (

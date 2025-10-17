@@ -7,19 +7,19 @@ import pandas as pd
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 import psycopg2
-from sentence_transformers import SentenceTransformer
 import numpy as np
 import traceback
 import json
+from sentence_transformers import SentenceTransformer
+
 
 # Load the embedding model globally for the search tool
 MODEL_NAME = 'BAAI/bge-small-en-v1.5'
 try:
     embedding_model = SentenceTransformer(MODEL_NAME)
 except Exception as e:
-    # Changed to a standard print warning
-    print(f"Warning: Failed to load SentenceTransformer model {MODEL_NAME}. Search tool will fail. Error: {e}")
-
+    print(f"ERROR: Failed to load SentenceTransformer model '{MODEL_NAME}'. Search tool will fail. Error: {e}")
+    embedding_model = None 
 
 # =======================================================
 # Pydantic Schemas
@@ -36,24 +36,20 @@ class GetTableSchemaInput(BaseModel):
 # Base Tool Setup for Parameterized Connections
 # =======================================================
 class BaseSQLTool(BaseTool):
-    # SQL Server connection details (passed from main.py)
+    # SQL Server connection details
     db_server: str = Field(description="SQL Server host name.")
     db_database: str = Field(description="SQL Server database name.")
     db_username: str = Field(description="SQL Server user name.")
     db_password: str = Field(description="SQL Server password.")
     
-    # Vector DB connection details (passed from main.py)
+    # Vector DB connection details
     vector_db_host: str = Field(description="PostgreSQL Vector DB host.")
     vector_db_name: str = Field(description="PostgreSQL Vector DB name.")
     vector_db_user: str = Field(description="PostgreSQL Vector DB user.")
     vector_db_password: str = Field(description="PostgreSQL Vector DB password.")
-    company_id: int = Field(description="The unique ID of the client company.")
-
+    company_id: str = Field(description="The unique ID of the client company.")
 
     def get_sql_conn_string(self):
-        """
-        Generates the ODBC connection string.
-        """
         return (
             f"DRIVER={{ODBC Driver 17 for SQL Server}};"
             f"SERVER={self.db_server},1433;"
@@ -85,7 +81,7 @@ class VectorDBTableSearchTool(BaseSQLTool):
     
     def _run(self, query_key: str) -> str:
         conn = None
-        SEARCH_LIMIT = 12 
+        SEARCH_LIMIT = 15 
         try:
             query_embedding = embedding_model.encode(query_key, normalize_embeddings=True)
             query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
@@ -93,18 +89,17 @@ class VectorDBTableSearchTool(BaseSQLTool):
             conn = psycopg2.connect(**self.get_vector_db_conn_params())
             cur = conn.cursor()
             
-            ### START MODIFICATION ###
-            # The SQL query now also selects the 'table_relations' column.
-            search_query = f"""
+            search_query = """
             SELECT table_name, table_description, table_relations
             FROM client_schema_vectors
-            WHERE company_id = {self.company_id}
-            ORDER BY embedding <-> '{query_embedding_str}'
-            LIMIT {SEARCH_LIMIT};
+            WHERE company_id = %s
+            ORDER BY embedding <-> %s
+            LIMIT %s;
             """
-            ### END MODIFICATION ###
             
-            cur.execute(search_query)
+            params = (self.company_id, query_embedding_str, SEARCH_LIMIT)
+            cur.execute(search_query, params)
+
             results = cur.fetchall()
             
             if not results:
@@ -112,18 +107,15 @@ class VectorDBTableSearchTool(BaseSQLTool):
 
             output = [f"--- Search Results (Top {SEARCH_LIMIT}) ---"]
             
-            ### START MODIFICATION ###
-            # The output now includes the 'table_relations' data for the agent to use.
-            # The result tuple now has three items: (table_name, description, relations)
             for table_name, description, relations in results:
-                # Format relations to be a clean string if it's not None
                 relations_str = json.dumps(relations) if relations else "[]"
                 output.append(f"Table: {table_name}, Description: {description}, Relations: {relations_str}")
-            ### END MODIFICATION ###
 
             return "\n".join(output)
             
         except Exception as e:
+            # Added traceback for better debugging
+            traceback.print_exc()
             return f"Error performing vector search: {e}"
         finally:
             if conn:
@@ -143,14 +135,8 @@ class GetTableSchemaTool(BaseSQLTool):
 
     def _run(self, table_names: str) -> str:
         try:
-            odbc_connect = (
-                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-                f"SERVER={self.db_server},1433;"
-                f"DATABASE={self.db_database};UID={self.db_username};PWD={self.db_password};"
-                f"LoginTimeout=30"
-            )
-            
-            connection_string = f"mssql+pyodbc:///?odbc_connect={odbc_connect}"
+            odbc_connect = self.get_sql_conn_string() # Re-used the method from base class
+            connection_string = f"mssql+pyodbc:///?odbc_connect={odbc_connect.replace(';', '%3B')}"
             engine = create_engine(connection_string)
             schema_info = []
             tables_list = [t.strip() for t in table_names.split(',')]
@@ -162,15 +148,18 @@ class GetTableSchemaTool(BaseSQLTool):
                     schema_info.append(f"Skipping: Invalid table name format '{full_table_name}'.")
                     continue
                 
-                query = f"""
+                query = """
                 SELECT COLUMN_NAME, DATA_TYPE
                 FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_SCHEMA = '{schema}' AND TABLE_NAME = '{table}'
+                WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
                 """
-                result = pd.read_sql_query(query, engine)
+                params = (schema, table)
+                result = pd.read_sql_query(query, engine, params=params)
+                
                 if not result.empty:
                     schema_info.append(f"Table {full_table_name}:\n" + result.to_string(index=False))
             
             return "\n\n".join(schema_info) if schema_info else "No schema found for the provided tables."
         except Exception as e:
+            traceback.print_exc()
             return f"Error fetching table schema: {e}"

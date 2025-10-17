@@ -2,31 +2,35 @@
 
 import pyodbc
 from collections import defaultdict
-from ..shared import config 
+# We no longer need to import the global config file here
 
 class DatabaseScanner:
     """
     Connects to the source SQL Server database to fetch schemas,
     primary keys, and foreign key relationships for all tables.
     """
-    def __init__(self):
-        """Initializes the database connection string from the config."""
+    def __init__(self, db_settings: dict):
+        """Initializes the database connection string from the passed settings dictionary."""
+        if not all(k in db_settings for k in ['server', 'database', 'username', 'password']):
+             raise ValueError("The provided db_settings dictionary is missing one or more required keys.")
+        
         try:
             self.conn_string = (
                 f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-                f"SERVER={config.DB_SERVER};DATABASE={config.DB_DATABASE};"
-                f"UID={config.DB_USERNAME};PWD={config.DB_PASSWORD}"
+                f"SERVER={db_settings['server']};DATABASE={db_settings['database']};"
+                f"UID={db_settings['username']};PWD={db_settings['password']}"
             )
         except Exception as e:
-            raise ValueError(f"Missing one or more database configuration values: {e}")
+            raise ValueError(f"Error building connection string: {e}")
 
+    # ... The rest of the file (_execute_query, _fetch_primary_keys, etc.) remains exactly the same ...
     def _execute_query(self, cursor, query: str) -> list:
-        """A helper method to execute a query and fetch all results."""
+        # ... (no change)
         cursor.execute(query)
         return cursor.fetchall()
 
     def _fetch_primary_keys(self, cursor) -> dict:
-        """Fetches the primary key for each table in the database."""
+        # ... (no change)
         query = """
         SELECT s.name AS schema_name, t.name AS table_name, c.name AS column_name
         FROM sys.tables t
@@ -44,7 +48,7 @@ class DatabaseScanner:
         return primary_keys
 
     def _fetch_foreign_key_relationships(self, cursor) -> dict:
-        """Fetches all foreign key relationships from the database."""
+        # ... (no change)
         query = """
         SELECT
             fk.name AS constraint_name,
@@ -72,27 +76,19 @@ class DatabaseScanner:
         return dict(relationships)
 
     def scan_tables(self) -> list:
-        """
-        Main method to connect to the DB and orchestrate the fetching of all schema details.
-        
-        Returns:
-            A list of dictionaries, where each dictionary contains the metadata for one table.
-        """
+        # ... (no change)
         table_schema_details = []
         try:
             with pyodbc.connect(self.conn_string) as cnxn:
                 cursor = cnxn.cursor()
                 
-                # 1. Fetch all key information first
                 all_pks = self._fetch_primary_keys(cursor)
                 all_fks = self._fetch_foreign_key_relationships(cursor)
                 
-                # 2. Fetch all table names
                 table_list_query = "SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
                 all_tables_meta = self._execute_query(cursor, table_list_query)
                 print(f"Found {len(all_tables_meta)} tables to process.")
                 
-                # 3. Prepare schema and combined key details for each table
                 for table_schema, table_name in all_tables_meta:
                     full_table_name = f"{table_schema}.{table_name}"
                     

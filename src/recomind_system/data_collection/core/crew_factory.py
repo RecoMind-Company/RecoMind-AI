@@ -1,43 +1,96 @@
 # data_collection/core/crew_factory.py
 
+import psycopg2
 from crewai import Crew, Process
 
-# Import the shared application config using a direct, absolute path
+# Second: Now we can safely import the config module. The API will not be called.
 from ....shared import config
 
-# Import the component builders from the sibling components file
+# Import the component builders
 from .crew_components import get_llm, get_configured_agents, get_tasks
+
+
+def get_source_db_settings_from_postgres(company_id: str) -> dict:
+    """
+    Connects to the PostgreSQL database to fetch the Source DB connection details
+    using the provided company_id.
+    """
+    conn = None
+    try:
+        # Use the Vector DB connection details from the config file to connect.
+        conn = psycopg2.connect(
+            host=config.VECTOR_DB_HOST,
+            dbname=config.VECTOR_DB_NAME,
+            user=config.VECTOR_DB_USER,
+            password=config.VECTOR_DB_PASSWORD
+        )
+        cur = conn.cursor()
+        # Fetch the most recent connection details for the given company_id
+        query = "SELECT server, database, username, password FROM source_connections WHERE company_id = %s ORDER BY created_at DESC LIMIT 1;"
+        cur.execute(query, (company_id,))
+        record = cur.fetchone()
+
+        if record:
+            print(f"✔ Successfully fetched source connection settings for Company ID: {company_id} from the database.")
+            return {'db_server': record[0], 'db_database': record[1], 'db_username': record[2], 'db_password': record[3]}
+        else:
+            return None
+    except (Exception, psycopg2.Error) as error:
+        print(f"✖ Error fetching settings from PostgreSQL: {error}")
+        return None
+    finally:
+        if conn:
+            cur.close()
+            conn.close()
+
 
 def create_crew() -> Crew:
     """
-    Creates and assembles the CrewAI crew by fetching configured components.
-    This function acts as the final assembly line.
+    Assembles the CrewAI crew, dynamically fetching Source DB settings from the database.
     """
-    # 1. Get the configured LLM
+    # 1. Prompt the user for the Company ID
+    company_id = input("Please enter the Company ID to process: ").strip()
+    if not company_id:
+        print("✖ Company ID cannot be empty. Exiting.")
+        return None
+
+    # 2. Fetch the SOURCE DB settings from the database
+    source_db_settings = get_source_db_settings_from_postgres(company_id)
+    
+    if not source_db_settings:
+        print(f"✖ Could not find settings for Company ID '{company_id}'.")
+        return None
+
+    # 3. Get the LLM
     llm = get_llm()
 
-    # 2. Prepare the parameters needed for the tools
+    # 4. Prepare the parameters needed for the tools
     tool_params = {
-        'db_server': config.DB_SERVER,
-        'db_database': config.DB_DATABASE,
-        'db_username': config.DB_USERNAME,
-        'db_password': config.DB_PASSWORD,
+        # Source DB details are from the new function (not from config)
+        'db_server': source_db_settings['db_server'],
+        'db_database': source_db_settings['db_database'],
+        'db_username': source_db_settings['db_username'],
+        'db_password': source_db_settings['db_password'],
+        
+        # Vector DB details are from the config file directly (as requested)
         'vector_db_host': config.VECTOR_DB_HOST,
         'vector_db_name': config.VECTOR_DB_NAME,
         'vector_db_user': config.VECTOR_DB_USER,
         'vector_db_password': config.VECTOR_DB_PASSWORD,
-        'company_id': int(config.COMPANY_ID)
+        'company_id': company_id
     }
 
-    # 3. Get the configured agents and the list of tasks
+    # 5. Get the agents and tasks
     agents = get_configured_agents(tool_params, llm)
     tasks = get_tasks()
 
-    # 4. Assemble and return the final Crew object
-    return Crew(
+    # 6. Assemble and return the final Crew
+    final_crew = Crew(
         agents=agents,
         tasks=tasks,
         verbose=True,
         process=Process.sequential,
         llm=llm
     )
+    
+    return final_crew, source_db_settings

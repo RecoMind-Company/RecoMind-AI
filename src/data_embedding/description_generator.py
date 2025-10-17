@@ -2,7 +2,7 @@
 
 from langchain_openai import ChatOpenAI
 import json
-from ..shared import config
+# We no longer need to import the global config file here
 from . import embedding_config 
 
 class DescriptionGenerator:
@@ -11,7 +11,7 @@ class DescriptionGenerator:
     for a given list of table schemas.
     """
     def __init__(self):
-        """Initializes the LLM client from the config."""
+        # ... (The __init__ method remains exactly the same)
         if not embedding_config.OPENROUTER_API_KEY:
             raise ValueError("OPENROUTER_API_KEY not found. Cannot generate descriptions.")
             
@@ -22,13 +22,14 @@ class DescriptionGenerator:
             temperature=0.1
         )
 
+    # ... The _chunk_list and _generate_batch_descriptions methods remain exactly the same ...
     def _chunk_list(self, input_list: list, chunk_size: int):
-        """Yield successive n-sized chunks from input_list."""
+        # ... (no change)
         for i in range(0, len(input_list), chunk_size):
             yield input_list[i:i + chunk_size]
 
     def _generate_batch_descriptions(self, table_schemas_text: str) -> dict:
-        """Sends a batch of schemas to the LLM and requests JSON output."""
+        # ... (no change)
         prompt = f"""
         Analyze the following SQL table schemas. For each table, generate a single,
         powerful, and concise business-focused description summarizing its purpose.
@@ -53,21 +54,21 @@ class DescriptionGenerator:
             print(f"\nLLM BATCH Error (Skipping Batch): {e}")
             return {}
 
-    def generate_for_tables(self, tables_data: list) -> list:
+    def generate_for_tables(self, tables_data: list, source_settings: dict) -> list:
         """
         Orchestrates the description generation process in batches.
 
         Args:
             tables_data: A list of table metadata dictionaries from DatabaseScanner.
-
-        Returns:
-            A list of tuples, each containing (company_id, table_name, description, relations_json).
+            source_settings: The dictionary containing the fetched API settings, including company_id.
         """
         data_to_ingest = []
         
+        # Extract company_id from the passed dictionary
+        company_id = source_settings['company_id']
+
         print(f"Starting batch description generation for {len(tables_data)} tables...")
         
-        # Process data in chunks to generate descriptions
         for i, chunk in enumerate(self._chunk_list(tables_data, embedding_config.INGESTION_CHUNK_SIZE)):
             print(f"\n--- Processing Batch {i+1} ({len(chunk)} tables) ---")
             
@@ -80,15 +81,15 @@ class DescriptionGenerator:
 
             description_map = {item.get('table_name'): item.get('description') for item in llm_response_json.get('descriptions', [])}
 
-            # Combine generated descriptions with schemas and key_info
             for table_data in chunk:
                 table_name = table_data['full_name']
                 description = description_map.get(table_name)
                 key_info_obj = table_data['key_info']
                 
                 if table_name and description:
+                    # Use the company_id variable that was extracted earlier
                     data_to_ingest.append(
-                        (config.COMPANY_ID, table_name, description, json.dumps(key_info_obj))
+                        (company_id, table_name, description, json.dumps(key_info_obj))
                     )
                     print(f"SUCCESS: Mapped description for {table_name}")
                 else:
