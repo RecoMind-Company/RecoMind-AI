@@ -1,25 +1,32 @@
 # src/recomind/data_embedding/pipeline.py
 
-# No need for os or sys imports for path manipulation anymore.
-
-# =============================================================================
-# --- Main Application Imports ---
-# These are standard package imports that work because we run as a module.
-# =============================================================================
 from .database_scanner import DatabaseScanner
 from .description_generator import DescriptionGenerator
 from .vector_store import VectorStore
-from ..shared import config
+from ..shared import config  # This import triggers the API call in config.py
 from . import embedding_config 
 
 def run_ingestion_pipeline():
     """
     The main function that orchestrates the entire ingestion process.
     """
+    print("--- Starting Ingestion Pipeline ---")
+    
+    # =========================================================================
+    # --- STEP 1: VALIDATE AND SAVE THE FETCHED DB SETTINGS (NEW CODE) ---
+    # =========================================================================
+    if not config.source_settings or not config.DB_SERVER:
+        print("Pipeline aborted: Failed to fetch database connection settings from the API.")
+        return
+    
+    # Save the fetched settings to the destination DB for logging/auditing
+    print("Attempting to save the fetched settings for audit...")
+    config.save_settings_to_db(config.source_settings)
+    # =========================================================================
+
+    print(f"DEBUG: Company ID {config.COMPANY_ID} settings loaded successfully.")
     print(f"DEBUG: API Key Loaded✅" if embedding_config.OPENROUTER_API_KEY else "DEBUG: API Key Missing❌")
     
-    print("--- Starting Ingestion Pipeline ---")
-
     # The rest of your function remains exactly the same...
     scanner = DatabaseScanner()
     tables_data = scanner.scan_tables()

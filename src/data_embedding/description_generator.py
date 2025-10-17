@@ -88,7 +88,7 @@ class DescriptionGenerator:
                 
                 if table_name and description:
                     data_to_ingest.append(
-                        (int(config.COMPANY_ID), table_name, description, json.dumps(key_info_obj))
+                        (config.COMPANY_ID, table_name, description, json.dumps(key_info_obj))
                     )
                     print(f"SUCCESS: Mapped description for {table_name}")
                 else:
