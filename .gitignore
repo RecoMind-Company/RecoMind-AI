@@ -44,6 +44,7 @@ env/
 # Generated output and data examples that shouldn't be in version control
 # It's better to keep example structures or schema, but not large data files.
 final_output_ex/
+final_output/
 data_examples/*.csv
 
 # If `data_embedding` contains generated embeddings, uncomment the line below

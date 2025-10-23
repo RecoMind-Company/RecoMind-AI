@@ -81,7 +81,7 @@ class VectorDBTableSearchTool(BaseSQLTool):
     
     def _run(self, query_key: str) -> str:
         conn = None
-        SEARCH_LIMIT = 15 
+        SEARCH_LIMIT = 12 
         try:
             query_embedding = embedding_model.encode(query_key, normalize_embeddings=True)
             query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'

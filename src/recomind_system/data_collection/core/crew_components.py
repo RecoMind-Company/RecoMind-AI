@@ -1,5 +1,3 @@
-# data_collection/core/crew_components.py
-
 import os
 from crewai.llm import LLM
 from typing import List, Dict, Any
@@ -11,7 +9,8 @@ from .agents import (
     table_analyzer_agent, 
     data_analyst_agent, 
     query_generator_agent, 
-    query_reviewer_agent
+    query_reviewer_agent,
+    query_orchestrator_agent # <-- IMPORTED NEW AGENT
 )
 from .tools import VectorDBTableSearchTool, GetTableSchemaTool
 from .tasks import (
@@ -19,15 +18,22 @@ from .tasks import (
     task_analyze_tables, 
     task_analyze_schema, 
     task_generate_query, 
-    task_review_query
+    task_review_query,
+    task_orchestrate_query_generation # <-- IMPORTED NEW TASK
 )
 
 def get_llm() -> LLM:
     """Creates and configures the Language Model for the crew."""
+    # The 'llm_params' dictionary is where you control the model's behavior.
+    llm_params = {
+        "temperature": 0.0,
+    }
+
     return LLM(
         model="openrouter/mistralai/mistral-7b-instruct:free",
         base_url="https://openrouter.ai/api/v1",
-        api_key=os.getenv("OPENROUTER_API_KEY")
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        model_kwargs=llm_params 
     )
 
 def get_configured_agents(tool_params: Dict[str, Any], llm: LLM) -> List:
@@ -44,7 +50,8 @@ def get_configured_agents(tool_params: Dict[str, Any], llm: LLM) -> List:
         table_analyzer_agent, 
         data_analyst_agent, 
         query_generator_agent, 
-        query_reviewer_agent
+        query_reviewer_agent,
+        query_orchestrator_agent # <-- ADDED NEW AGENT TO LIST
     ]
     
     # Assign the same LLM to all agents
@@ -55,10 +62,14 @@ def get_configured_agents(tool_params: Dict[str, Any], llm: LLM) -> List:
 
 def get_tasks() -> List:
     """Returns the list of tasks for the crew."""
+    # This list must include ALL tasks the crew might need to run,
+    # including the worker tasks that the manager will delegate.
     return [
         task_retrieve_context, 
         task_analyze_tables, 
         task_analyze_schema, 
-        task_generate_query, 
-        task_review_query
+        task_orchestrate_query_generation, # <-- This is the new main step 4
+        task_generate_query, # <-- Worker task (available for manager)
+        task_review_query # <-- Worker task (available for manager)
     ]
+

@@ -13,10 +13,12 @@ def save_outputs(state: GraphState):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    df = state.get('dataframe')
-    if df is not None:
-        df.to_csv(os.path.join(output_dir, 'cleaned_data.csv'), index=False)
-        print(f"✅ Cleaned DataFrame saved to '{os.path.join(output_dir, 'cleaned_data.csv')}'")
+    # === MODIFICATION START: Disabled saving the cleaned DataFrame as requested ===
+    # df = state.get('dataframe')
+    # if df is not None:
+    #     df.to_csv(os.path.join(output_dir, 'cleaned_data.csv'), index=False)
+    #     print(f"✅ Cleaned DataFrame saved to '{os.path.join(output_dir, 'cleaned_data.csv')}'")
+    # === MODIFICATION END ===
 
     analysis_report = state.get('analysis_report')
     if analysis_report is not None:

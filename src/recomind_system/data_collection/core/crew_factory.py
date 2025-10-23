@@ -1,5 +1,3 @@
-# data_collection/core/crew_factory.py
-
 import psycopg2
 from crewai import Crew, Process
 
@@ -44,22 +42,22 @@ def get_source_db_settings_from_postgres(company_id: str) -> dict:
             conn.close()
 
 
-def create_crew() -> Crew:
+def create_crew(company_id: str) -> Crew:
     """
     Assembles the CrewAI crew, dynamically fetching Source DB settings from the database.
+    This function now takes company_id as a parameter instead of prompting the user.
     """
-    # 1. Prompt the user for the Company ID
-    company_id = input("Please enter the Company ID to process: ").strip()
+    # 1. Validate the provided Company ID
     if not company_id:
         print("✖ Company ID cannot be empty. Exiting.")
-        return None
+        return None, None
 
     # 2. Fetch the SOURCE DB settings from the database
     source_db_settings = get_source_db_settings_from_postgres(company_id)
     
     if not source_db_settings:
         print(f"✖ Could not find settings for Company ID '{company_id}'.")
-        return None
+        return None, None
 
     # 3. Get the LLM
     llm = get_llm()
@@ -89,8 +87,9 @@ def create_crew() -> Crew:
         agents=agents,
         tasks=tasks,
         verbose=True,
-        process=Process.sequential,
-        llm=llm
+        process=Process.sequential, 
+        llm=llm 
     )
     
     return final_crew, source_db_settings
+

@@ -1,7 +1,3 @@
-# src/recomind/main.py
-
-# No need for os or sys imports for path manipulation anymore.
-
 # =============================================================================
 # --- Main Application Imports ---
 # These are now standard package imports that will work correctly
@@ -12,22 +8,21 @@ from .data_collection.core import db_executor
 from .data_collection.core.crew_factory import create_crew
 from .auto_analyst.graph.workflow import get_analysis_app
 
-def run_full_pipeline():
+def run_full_pipeline(company_id: str, user_request: str):
     """
-    Orchestrates the entire process:
-    1. Runs CrewAI to generate a SQL query.
-    2. Executes the query to get a DataFrame.
-    3. Runs LangGraph to analyze the DataFrame and generate a report.
+    Orchestrates the entire process.
+    This function is now parameterized to accept company_id and user_request,
+    making it suitable for programmatic calls (e.g., from an API).
     """
     # === KICKOFF STAGE 1: CrewAI ===
-    # Unpack the crew object and the settings dictionary
-    recomind_crew, source_db_settings = create_crew()
+    # Pass the company_id to the create_crew function
+    recomind_crew, source_db_settings = create_crew(company_id)
 
     if not recomind_crew:
         print("❌ Crew creation failed. Aborting pipeline.")
         return
 
-    user_request = input("Enter your data request (e.g., 'Sales overview' or 'Active Employees'): ")
+    # The user_request is now passed in as a parameter, not from input()
     print(f"\n🚀 STAGE 1: RUNNING DATA COLLECTION CREW FOR: '{user_request}'")
 
     sql_query = recomind_crew.kickoff(inputs={'user_request': user_request})
@@ -53,7 +48,10 @@ def run_full_pipeline():
     print(f"\n🚀 STAGE 3: RUNNING DATA ANALYSIS GRAPH...")
     analysis_app = get_analysis_app()
 
-    initial_state = {"dataframe": data_df}
+    # === MODIFICATION START: Pass the user_request into the graph's initial state ===
+    initial_state = {"dataframe": data_df, "user_request": user_request}
+    # === MODIFICATION END ===
+    
     final_state = analysis_app.invoke(initial_state)
 
     if final_state and final_state.get("analysis_report"):
@@ -63,4 +61,10 @@ def run_full_pipeline():
     print("\n🎉 FULL PIPELINE FINISHED SUCCESSFULLY!")
     
 if __name__ == "__main__":
-    run_full_pipeline()
+    # Example of how to run the refactored pipeline.
+    # These values will eventually come from your API endpoint.
+    test_company_id = "fb140d33-7e96-474d-a06d-ab3a6c65d1a9"
+    test_user_request = "Full Sales Report including the Products Sales."
+
+    print("--- Running Pipeline with Test Data ---")
+    run_full_pipeline(company_id=test_company_id, user_request=test_user_request)
