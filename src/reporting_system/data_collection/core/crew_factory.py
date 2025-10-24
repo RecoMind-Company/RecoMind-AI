@@ -2,7 +2,7 @@ import psycopg2
 from crewai import Crew, Process
 
 # Second: Now we can safely import the config module. The API will not be called.
-from ....shared import config
+from ...shared import config
 
 # Import the component builders
 from .crew_components import get_llm, get_configured_agents, get_tasks

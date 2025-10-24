@@ -3,7 +3,7 @@
 # These are now standard package imports that will work correctly
 # when you run the project as a module.
 # =============================================================================
-from ..shared import config
+from .shared import config
 from .data_collection.core import db_executor
 from .data_collection.core.crew_factory import create_crew
 from .auto_analyst.graph.workflow import get_analysis_app

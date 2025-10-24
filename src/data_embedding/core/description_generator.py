@@ -1,7 +1,8 @@
-# embedding/description_generator.py
+# src/recomind/data_embedding/core/description_generator.py
 
 from langchain_openai import ChatOpenAI
 import json
+import time # <--- REQUIRED IMPORT: Added to control request rate
 # We no longer need to import the global config file here
 from . import embedding_config 
 
@@ -77,6 +78,8 @@ class DescriptionGenerator:
             
             if not llm_response_json or 'descriptions' not in llm_response_json:
                 print(f"WARNING: Failed to get valid JSON for Batch {i+1}. Skipping batch.")
+                # --- APPLY SLEEP EVEN ON FAILURE to respect rate limits ---
+                time.sleep(1) 
                 continue
 
             description_map = {item.get('table_name'): item.get('description') for item in llm_response_json.get('descriptions', [])}
@@ -94,5 +97,8 @@ class DescriptionGenerator:
                     print(f"SUCCESS: Mapped description for {table_name}")
                 else:
                     print(f"WARNING: Could not find a valid description for {table_name} in LLM response.")
+
+            # --- RATE LIMIT FIX: Add a 1-second delay after each batch call ---
+            time.sleep(1) # <--- THIS IS THE FIX for 429 errors!
 
         return data_to_ingest

@@ -1,4 +1,4 @@
-# embedding/database_scanner.py
+# src/recomind/data_embedding/core/database_scanner.py
 
 import pyodbc
 from collections import defaultdict

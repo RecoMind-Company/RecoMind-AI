@@ -1,8 +1,8 @@
-# embedding/vector_store.py
+# src/recomind/data_embedding/core/vector_store.py
 
 import psycopg2
 from sentence_transformers import SentenceTransformer
-from ..shared import config
+from shared import config
 from . import embedding_config
 
 class VectorStore:

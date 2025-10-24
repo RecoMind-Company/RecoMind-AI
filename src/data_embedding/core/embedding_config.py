@@ -1,4 +1,4 @@
-# embedding/embedding_components.py
+# src/recomind/data_embedding/core/embedding_components.py
 
 import os
 from dotenv import load_dotenv
