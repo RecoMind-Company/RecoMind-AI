@@ -2,7 +2,7 @@ import json
 import time  # NEW: Added import for sleep
 from json import JSONDecodeError  # NEW: Added import for specific exception
 from ..graph.state import GraphState
-from ..core.config import llm_model
+from ..components.config import graph_llm as llm_model
 
 # --- Node Functions --- 
 

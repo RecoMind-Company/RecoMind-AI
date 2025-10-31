@@ -5,7 +5,7 @@ from crewai import Crew, Process
 from ...shared import config
 
 # Import the component builders
-from .crew_components import get_llm, get_configured_agents, get_tasks
+from .crew_components import llm, get_configured_agents, get_tasks
 
 
 def get_source_db_settings_from_postgres(company_id: str) -> dict:
@@ -58,9 +58,6 @@ def create_crew(company_id: str) -> Crew:
     if not source_db_settings:
         print(f"✖ Could not find settings for Company ID '{company_id}'.")
         return None, None
-
-    # 3. Get the LLM
-    llm = get_llm()
 
     # 4. Prepare the parameters needed for the tools
     tool_params = {

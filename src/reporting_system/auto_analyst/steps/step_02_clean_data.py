@@ -5,7 +5,7 @@ import io
 import time 
 from json import JSONDecodeError 
 from ..graph.state import GraphState
-from ..core.config import llm_model
+from ..components.config import graph_llm as llm_model
 from ..utils.json_parser import extract_and_parse_json
 
 # --- Node Functions ---

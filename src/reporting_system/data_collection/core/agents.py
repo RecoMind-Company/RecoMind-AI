@@ -1,10 +1,10 @@
+### START MODIFICATIONS ###
 from crewai import Agent
 from langchain_openai import ChatOpenAI
 import os
 
-### START MODIFICATION ###
-
-# AGENT 1 : This agent's ONLY job is to call the search tool. It has no analytical skills.
+# --- AGENT 1, 2, 3, 4 (No Changes) ---
+# AGENT 1: Database Context Retriever
 retrieval_agent = Agent(
     role='Database Context Retriever',
     goal='Take a user request, execute the vector_db_table_search tool with that request, and return the raw, unfiltered output.',
@@ -14,10 +14,10 @@ retrieval_agent = Agent(
     ),
     verbose=True,
     allow_delegation=False,
-    tools=[], # Tools are assigned in the main script
+    tools=[], 
 )
 
-# AGENT 2 : This agent now ONLY analyzes the output of the first agent.
+# AGENT 2: Database Context Analyzer
 table_analyzer_agent = Agent(
     role='Database Context Analyzer',
     goal=(
@@ -30,7 +30,10 @@ table_analyzer_agent = Agent(
         "1. Analyze the raw text input to identify all tables, their descriptions, and their 'Relations' data.\n"
         "2. From this data, determine which tables are most relevant to the topic.\n"
         "3. Select a final group of tables that are all connected to each other, using the 'Relations' data (which contains PK and FKs).\n"
-        "4. Your final output **MUST** be a single JSON object. This JSON object must have two keys: 'selected_tables' (a list of table names) and 'key_info' (an object where each key is a table name and the value is its 'Relations' data)."
+        "4. Your final output **MUST** be a single JSON object. This JSON object must have two keys: 'selected_tables' (a list of table names) and 'key_info' (an object where each key is a table name and the value is its 'Relations' data).\n\n"
+        "**CRITICAL RULE: Your FINAL answer MUST be ONLY the valid JSON object.** "
+        "**DO NOT** include any 'thinking' text, introductory sentences, or conversational phrases (like 'Here is the JSON...'). "
+        "Your entire response must start *exactly* with `{` and end *exactly* with `}`."
     ),
     verbose=True,
     allow_delegation=False,
@@ -38,79 +41,77 @@ table_analyzer_agent = Agent(
     max_iter=5,
 )
 
-# AGENT 3 : This agent focuses on schema validation and column selection.
-data_analyst_agent = Agent(
-    role='Data Analyst and Schema Validator',
-    goal='From a given JSON input, extract table names, validate their schemas, select relevant columns, and pass all information forward in a new JSON object.',
+# AGENT 3: Schema Retrieval Bot
+schema_retriever_agent = Agent(
+    role='Schema Retrieval Bot',
+    goal="Take a JSON input {'selected_tables': [...]}, execute the 'get_table_schema' tool with those table names, and return the raw string output.",
     backstory=(
-        "You are an experienced data analyst. You receive a JSON object containing 'selected_tables' and 'key_info'.\n"
-        "Your process is:\n"
-        "1. Extract the table names from the 'selected_tables' list.\n"
-        "2. Use the 'get_table_schema' tool to verify each table and analyze its columns. Store the raw string output of this tool.\n"
-        "3. Based on the original user's request, select the most relevant columns from the valid tables.\n"
-        "4. Your final output **MUST** be a single JSON object. This object must have three keys: 'selected_columns' (a list of fully qualified column names), 'key_info' (the original, unmodified 'key_info' object you received), and 'full_schema_string' (the raw string output from the 'get_table_schema' tool)."
+        "You are a simple execution bot. You receive a JSON object with a 'selected_tables' key. "
+        "Your ONLY job is to extract the list of table names and immediately call the 'get_table_schema' tool. "
+        "You do not analyze, think, or format. You pass the raw tool output (which is a string) to the next agent."
     ),
     verbose=True,
     allow_delegation=False,
-    tools=[], # Tools are assigned in the main script
+    tools=[], 
     max_iter=3,
 )
 
+# AGENT 4: Column Selector and Data Planner
+column_selector_agent = Agent(
+    role='Column Selector and Data Planner',
+    goal='From a raw schema string, select relevant columns based on the user request and format a final JSON packet for the query generator.',
+    backstory=(
+        "You are a meticulous data analyst. You receive input from multiple sources in your context: "
+        "1. The 'full_schema_string' (as the direct output from the 'Schema Retrieval Bot'). "
+        "2. The JSON output from 'Database Context Analyzer' (which contains the crucial 'key_info' object). "
+        "3. The original '{user_request}'.\n"
+        "**CRITICAL: You DO NOT have access to any tools.** Your ONLY job is to analyze the text context provided to you and format the JSON output. "
+        "You MUST NOT try to call 'get_table_schema' or any other tool.\n"
+        "Your process is MANDATORY:\n"
+        "1. **Analyze:** Analyze the **provided** 'full_schema_string' and the '{user_request}' to select the necessary columns.\n"
+        "2. **Check for Errors:** IF THE 'full_schema_string' IS AN ERROR MESSAGE (e.g., 'Error fetching schema...'), you must stop and output that 'ERROR:' message as your Final Answer.\n"
+        "3. **Format JSON Output:** If successful, your FINAL answer MUST be a single, valid JSON object string. This object MUST have exactly these three keys:\n"
+        "   1. 'selected_columns': The list of fully qualified column names you selected.\n"
+        "   2. 'key_info': The original 'key_info' object you extracted from the 'Database Context Analyzer's' output.\n"
+        "   3. 'full_schema_string': The raw, unmodified string output you received.\n\n"
+        "**CRITICAL RULE: Your FINAL answer MUST be ONLY the valid JSON object.** "
+        "**DO NOT** include any 'thinking' text, introductory sentences, or conversational phrases (like 'Looking at the schema...'). "
+        "Your entire response must start *exactly* with `{` and end *exactly* with `}`."
+    ),
+    verbose=True,
+    allow_delegation=False,
+    tools=[],
+    max_iter=5,
+)
 
-# AGENT 4: The expert builder, ready for instructions. (WORKER)
+
+# AGENT 5: The expert builder. (*** MODIFIED WITH ESCAPE RULE ***)
 query_generator_agent = Agent(
-    role='Fact-Based SQL Query Generator',
-    goal='Generate a correct SQL Server query using a provided list of columns and precise join key information (PKs and FKs). You MUST NOT guess join conditions.',
+    role='SQL Query Assembler',
+    goal='Assemble a simple `SELECT ... LEFT JOIN ...` query using ONLY the provided column list and key info. You MUST create aliases for duplicate/generic columns and escape reserved keywords. Output ONLY the raw SQL string.',
     backstory=(
-        "You are a meticulous SQL Server expert who relies ONLY on the facts and instructions provided for the current task. "
+        "You are a simple SQL assembler. You are NOT an analyst. Your ONLY job is to build a query. "
         "You will receive 'selected_columns', 'key_info', and 'full_schema_string'.\n"
-        "Your job is to translate this structured plan into a flawless SQL query. "
-        "You pay extreme attention to detail. Your **most critical rule** is to follow the join logic provided in the 'key_info' object **EXACTLY AS-IS**. "
-        "You MUST use the 'full_schema_string' to validate that all columns you use (in SELECT or JOIN) actually exist. "
-        "You are **STRICTLY FORBIDDEN** from inventing or guessing any join condition. "
-        "If you are given 'correction_feedback', you MUST use it to fix your previous query."
-        "You return ONLY the raw SQL query string."
+        
+        "**CRITICAL MANDATORY RULES:**\n"
+        "1. **USE `LEFT JOIN`:** You MUST use `LEFT JOIN` for all joins. This is to ensure all data is retrieved from the primary table. DO NOT use `INNER JOIN`.\n"
+        "2. **NO LOGIC:** You are **ABSOLUTELY FORBIDDEN** from using `WHERE`, `ORDER BY`, `GROUP BY`, `WITH`, `ROW_NUMBER()`, `COUNT()`, `SUM()`, or any filtering or aggregation. Your job is ONLY to select raw data.\n"
+        "3. **FOLLOW THE PLAN:** You MUST follow the `key_info` object **EXACTLY** for all join conditions.\n"
+        "4. **IGNORE USER REQUEST:** The original '{user_request}' text is IRRELEVANT to you. You ONLY obey the structured `selected_columns` and `key_info`.\n"
+        
+        "5. **CRITICAL RULE (COLUMN ALIASES):** You must ensure every column in the final `SELECT` list has a **unique name**.\n"
+        "   - **Part A (Duplicates):** If `selected_columns` has columns with the *same base name* from different tables (e.g., `soh.SalesOrderID` and `sod.SalesOrderID`), you **MUST** give them unique aliases (e.g., `soh.SalesOrderID AS HeaderSalesOrderID`, `sod.SalesOrderID AS DetailSalesOrderID`).\n"
+        "   - **Part B (Generic Names):** If `selected_columns` has *generic names* (like `Name`, `Title`, `FirstName`), you **MUST** give them descriptive aliases based on their table (e.g., `prod.Name AS ProductName`, `person.FirstName AS CustomerFirstName`).\n"
+
+        "6. **CRITICAL RULE (ESCAPE KEYWORDS):** You MUST put square brackets `[]` around any SQL reserved keyword used as a column or table name (e.g., `Sales.SalesTerritory.[Group]`, `Sales.[Order]`).\n\n"
+
+        "**CRITICAL OUTPUT RULE (MOST IMPORTANT):**\n"
+        "Your FINAL answer MUST be **ONLY** the raw SQL query string. "
+        "It must start *exactly* with `SELECT` and end *exactly* with the last character of the last join condition. "
+        "**DO NOT** include ` ```sql `, explanations, or any other text. ONLY the query."
     ),
     verbose=True,
     allow_delegation=False,
-    max_iter=7,
+    max_iter=5,
 )
-
-# AGENT 5 : This agent is dedicated to rigorous SQL validation. (WORKER)
-query_reviewer_agent = Agent(
-    role='SQL Query Reviewer and Validator',
-    goal='Critically examine the generated SQL query for correctness, syntax, and schema accuracy. If the query is INCORRECT, state the error clearly. If the query is CORRECT, return ONLY the validated query string.',
-    backstory=(
-        "You are an infallible SQL Server Master. You will receive the generated query AND the 'full_schema_string' from the previous steps. "
-        "Your job is to VALIDATE the query against this schema. "
-        "You MUST ensure: 1) All table/column names in the query (SELECT, JOIN, WHERE) **actually exist** in the 'full_schema_string'. "
-        "2) The JOIN clauses are logical and 100% correct based on the schema (e.g., catching if the generator 'guessed' a join on a non-existent column). "
-        "3) The SQL Server syntax is flawless. "
-        "4. CRITICAL VALIDATION: You must check for any SQL reserved keywords being used as column names. If you find one, it MUST be escaped with square brackets []. "
-        "If the query is WRONG, state the ERROR reason clearly. If it is CORRECT, return ONLY the final, validated SQL query. NO markdown, NO extra text."
-    ),
-    verbose=True,
-    allow_delegation=False,
-    max_iter=7,
-)
-
-# --- NEW AGENT ---
-# AGENT 6: The Orchestrator/Manager Agent
-query_orchestrator_agent = Agent(
-    role='SQL Query Process Manager',
-    goal='Manage the query generation and review loop to produce a 100% correct SQL query.',
-    backstory=(
-        "You are the manager responsible for query quality. Your process is fixed:\n"
-        "1.  Delegate the initial query generation to the 'Fact-Based SQL Query Generator' agent, passing all necessary context (schema, columns, keys, user request).\n"
-        "2.  Take the generated query and delegate its review to the 'SQL Query Reviewer' agent, also passing the schema.\n"
-        "3.  Inspect the output from the reviewer. \n"
-        "4.  If the output starts with 'ERROR:', you MUST loop. Delegate the task *back* to the 'Fact-Based SQL Query Generator', providing the *original context* PLUS the 'correction_feedback' from the reviewer.\n"
-        "5.  Repeat steps 2-4 until the 'SQL Query Reviewer' returns a valid SQL query (doesn't start with 'ERROR:').\n"
-        "6.  Your final output to the crew is ONLY the validated SQL query string."
-    ),
-    verbose=True,
-    allow_delegation=True, # This agent MUST be able to delegate
-    max_iter=5 # Allows for a few loops
-)
-### END MODIFICATION ###
-
+### END MODIFICATIONS ###

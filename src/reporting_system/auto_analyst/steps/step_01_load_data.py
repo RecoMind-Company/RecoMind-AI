@@ -2,7 +2,7 @@
 
 import pandas as pd
 from ..graph.state import GraphState
-from ..core.config import llm_model
+from ..components.config import graph_llm as llm_model
 
 def classify_data_with_llm(columns: list) -> str:
     """

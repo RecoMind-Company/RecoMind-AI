@@ -3,56 +3,50 @@ from crewai.llm import LLM
 from typing import List, Dict, Any
 from sentence_transformers import SentenceTransformer
 
-# Import base agents and tasks that have no configuration yet
+from ...shared.config import get_llm
+
+# ... (imports)
+
+# Make sure you only import the 5 agents you are using
 from .agents import (
     retrieval_agent, 
     table_analyzer_agent, 
-    data_analyst_agent, 
-    query_generator_agent, 
-    query_reviewer_agent,
-    query_orchestrator_agent # <-- IMPORTED NEW AGENT
+    schema_retriever_agent,
+    column_selector_agent,
+    query_generator_agent
 )
 from .tools import VectorDBTableSearchTool, GetTableSchemaTool
+
+# Make sure you only import the 5 tasks you are using
 from .tasks import (
     task_retrieve_context, 
     task_analyze_tables, 
-    task_analyze_schema, 
-    task_generate_query, 
-    task_review_query,
-    task_orchestrate_query_generation # <-- IMPORTED NEW TASK
+    task_retrieve_schema,
+    task_select_columns,
+    task_generate_final_query #<-- The new final task
 )
 
-def get_llm() -> LLM:
-    """Creates and configures the Language Model for the crew."""
-    # The 'llm_params' dictionary is where you control the model's behavior.
-    llm_params = {
-        "temperature": 0.0,
-    }
+llm = get_llm()
 
-    return LLM(
-        model="openrouter/mistralai/mistral-7b-instruct:free",
-        base_url="https://openrouter.ai/api/v1",
-        api_key=os.getenv("OPENROUTER_API_KEY"),
-        model_kwargs=llm_params 
-    )
 
-def get_configured_agents(tool_params: Dict[str, Any], llm: LLM) -> List:
+def get_configured_agents(tool_params: Dict[str, Any], llm) -> List:
     """
     Configures and returns the list of agents with their tools and LLM.
     """
+    ### START MODIFICATION ###
     # Assign tools to specific agents
     retrieval_agent.tools = [VectorDBTableSearchTool(**tool_params)]
-    data_analyst_agent.tools = [GetTableSchemaTool(**tool_params)]
+    schema_retriever_agent.tools = [GetTableSchemaTool(**tool_params)]
 
-    # Define the full list of agents
+    # Define the NEW list of agents (ONLY 5)
     all_agents = [
         retrieval_agent, 
         table_analyzer_agent, 
-        data_analyst_agent, 
+        schema_retriever_agent,
+        column_selector_agent,
         query_generator_agent, 
-        query_reviewer_agent,
-        query_orchestrator_agent # <-- ADDED NEW AGENT TO LIST
     ]
+    ### END MODIFICATION ###
     
     # Assign the same LLM to all agents
     for agent in all_agents:
@@ -62,14 +56,17 @@ def get_configured_agents(tool_params: Dict[str, Any], llm: LLM) -> List:
 
 def get_tasks() -> List:
     """Returns the list of tasks for the crew."""
-    # This list must include ALL tasks the crew might need to run,
-    # including the worker tasks that the manager will delegate.
+    
+    ### START MODIFICATION ###
+    # This is the NEW sequential list of tasks (ONLY 5)
     return [
         task_retrieve_context, 
         task_analyze_tables, 
-        task_analyze_schema, 
-        task_orchestrate_query_generation, # <-- This is the new main step 4
-        task_generate_query, # <-- Worker task (available for manager)
-        task_review_query # <-- Worker task (available for manager)
+        task_retrieve_schema,
+        task_select_columns,
+        task_generate_final_query #<-- This is the new step 5
     ]
+    ### END MODIFICATION ###
 
+# ... (rest of your file, like the create_crew function)
+# Make sure your create_crew function uses process=Process.sequential
