@@ -1,0 +1,43 @@
+# This is the new docker-compose file for the async architecture
+services:
+  
+  # Service 1: The Redis Queue
+  redis:
+    image: redis:7-alpine
+    container_name: recomind-ingestion-redis
+    hostname: recomind-ingestion-redis
+    ports:
+      - "6379:6379"
+
+  # Service 2: The FastAPI API
+  api:
+    build: .  # Build from the *modified* Dockerfile
+    container_name: recomind-ingestion-api
+    env_file:
+      - .env  # Load all secrets from .env file
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    # --- [MODIFICATION] ---
+    # We removed 'network_mode: "host"'
+    # Add a public DNS to fix internet resolution issues
+    dns:
+      - 8.8.8.8
+    # --- [MODIFICATION END] ---
+
+  # Service 3: The Celery Worker
+  worker:
+    build: .  # Use the *exact same* image
+    container_name: recomind-ingestion-worker
+    command: celery -A celery_worker.celery_app worker --loglevel=info -P gevent
+    env_file:
+      - .env  # The worker also needs all the secrets
+    depends_on:
+      - redis
+    # --- [MODIFICATION] ---
+    # We removed 'network_mode: "host"'
+    # The worker also needs the public DNS to access the internet
+    dns:
+      - 8.8.8.8
+    # --- [MODIFICATION END] ---

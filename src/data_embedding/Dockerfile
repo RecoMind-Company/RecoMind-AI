@@ -1,4 +1,4 @@
-# Base Image with Python 3.10 and Ubuntu 20.04 (LTS)
+# Base Image with Python 3.10
 FROM python:3.10-slim-bullseye
 
 # Install SQL Server ODBC Driver dependencies (KEEP THIS)
@@ -17,11 +17,18 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements and install Python libraries
+# (This file now includes celery, redis, gevent, python-dotenv)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code 
+# (This copies api.py, pipeline.py, celery_worker.py, and the 'core' folder)
 COPY . /app
 
-# Set the Gunicorn startup command (Final command to run the app)
-CMD ["python", "-m", "gunicorn", "-w", "1", "--timeout", "400", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8080", "main:app"]
+# Expose the new API port
+EXPOSE 8000
+
+# --- [MODIFICATION] ---
+# Set the new Uvicorn startup command
+# (Replaces the old Gunicorn command)
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]

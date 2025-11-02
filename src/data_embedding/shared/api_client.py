@@ -18,7 +18,7 @@ def _fetch_auth_token():
     try:
         # Tweak: Use .strip() to clean up URLs from .env file (removes spaces/quotes)
         login_url = config.API_LOGIN.strip().strip('"')
-        response = requests.post(login_url, json=login_payload, timeout=20)
+        response = requests.post(login_url, json=login_payload, timeout=60)
         
         response.raise_for_status() 
         

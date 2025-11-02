@@ -7,3 +7,6 @@ Requests==2.32.5
 sentence_transformers==5.1.1
 uvicorn==0.38.0
 gunicorn
+celery
+redis
+gevent
