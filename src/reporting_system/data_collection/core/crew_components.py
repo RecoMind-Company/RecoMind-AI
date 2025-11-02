@@ -3,7 +3,7 @@ from crewai.llm import LLM
 from typing import List, Dict, Any
 from sentence_transformers import SentenceTransformer
 
-from ...shared.config import get_llm
+from shared.config import get_llm
 
 # ... (imports)
 

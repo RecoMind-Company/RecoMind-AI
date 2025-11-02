@@ -1,0 +1,67 @@
+# This is the production file.
+# This file defines all the services and connects them.
+
+services:
+  
+  # Service 1: The Redis Queue
+  redis:
+    image: redis:7-alpine
+    container_name: recomind-redis
+    hostname: recomind-redis
+    ports:
+      - "6379:6379" # Expose to host for debugging
+    volumes:
+      - redis_data:/data
+
+  # Service 2: The FastAPI API (Uvicorn)
+  api:
+    build: .  # Build from the Dockerfile in this folder
+    container_name: recomind-api
+    
+    # --- [MODIFICATION] ---
+    # We load *all* variables from the .env file
+    env_file:
+      - .env
+    # --- [MODIFICATION END] ---
+      
+    # --- [MODIFICATION] ---
+    # Then, we *add* the specific variables that crewai needs,
+    # using the values we just loaded from the .env file.
+    environment:
+      # This "tricks" crewai into using OpenRouter as if it's OpenAI
+      - OPENAI_API_KEY=${OPENROUTER_API_KEY}
+      - OPENAI_API_BASE=${BASE_URL}
+      - OPENAI_MODEL_NAME=${crewai_LLM_MODEL}
+    # --- [MODIFICATION END] ---
+      
+    ports:
+      - "8000:8000" # Expose API port
+    depends_on:
+      - redis # Don't start the API until Redis is running
+
+  # Service 3: The Celery Worker
+  worker:
+    build: .  # Use the *exact same* image as the API
+    container_name: recomind-worker
+    command: celery -A celery_worker.celery_app worker --loglevel=info -P gevent
+    
+    # --- [MODIFICATION] ---
+    # The worker also needs *all* the same variables
+    env_file:
+      - .env
+    # --- [MODIFICATION END] ---
+      
+    # --- [MODIFICATION] ---
+    # The worker also needs the crewai "trick"
+    environment:
+      - OPENAI_API_KEY=${OPENROUTER_API_KEY}
+      - OPENAI_API_BASE=${BASE_URL}
+      - OPENAI_MODEL_NAME=${crewai_LLM_MODEL}
+    # --- [MODIFICATION END] ---
+
+    depends_on:
+      - redis
+      - api 
+
+volumes:
+  redis_data:
