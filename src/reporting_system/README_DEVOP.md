@@ -124,7 +124,11 @@ BASE_URL=https://openrouter.ai/api/v1
 
 # Vector DB Credentials (Supabase)
 VECTOR_DB_HOST=aws-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+<<<<<<< HEAD
 VECTOR_DB_USER=hossxxxxxxxxxxxx
+=======
+VECTOR_DB_USER=.
+>>>>>>> 1728f236a044ee963daf84686f6c3b91f5e0869c
 VECTOR_DB_PASSWORD=xxxxxxxxxxxxxxxxxx
 VECTOR_DB_NAME=xxxxxxxxxxxxxxx
 ```
@@ -211,4 +215,8 @@ To stop all running services:
 
 ```bash
 docker-compose down
+<<<<<<< HEAD
 ```
+=======
+```
+>>>>>>> 1728f236a044ee963daf84686f6c3b91f5e0869c
