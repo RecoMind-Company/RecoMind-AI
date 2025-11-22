@@ -42,7 +42,7 @@ def get_source_db_settings_from_postgres(company_id: str) -> dict:
             conn.close()
 
 
-def create_crew(company_id: str) -> Crew:
+def create_crew(company_id: str, team_name: str = None) -> Crew:
     """
     Assembles the CrewAI crew, dynamically fetching Source DB settings from the database.
     This function now takes company_id as a parameter instead of prompting the user.
@@ -72,7 +72,8 @@ def create_crew(company_id: str) -> Crew:
         'vector_db_name': config.VECTOR_DB_NAME,
         'vector_db_user': config.VECTOR_DB_USER,
         'vector_db_password': config.VECTOR_DB_PASSWORD,
-        'company_id': company_id
+        'company_id': company_id,
+        'team_name': team_name
     }
 
     # 5. Get the agents and tasks

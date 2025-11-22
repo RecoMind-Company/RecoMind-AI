@@ -12,6 +12,7 @@ services:
   # Service 2: The FastAPI API
   api:
     build: .  # Build from the *modified* Dockerfile
+    image: hossamtaha9/recomind-ai-vector:latest
     container_name: recomind-ingestion-api
     env_file:
       - .env  # Load all secrets from .env file
