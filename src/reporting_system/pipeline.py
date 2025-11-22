@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # This turns it from a regular function into a Background Task.
 # We also add 'bind=True' so we can update the status.
 @celery_app.task(bind=True)
-def run_full_pipeline(self, company_id: str, user_request: str) -> str:
+def run_full_pipeline(self, company_id: str, user_request: str, team_name: str = None) -> str:
     """
     (This is now a Celery Task)
     Orchestrates the entire asynchronous process.
@@ -30,7 +30,7 @@ def run_full_pipeline(self, company_id: str, user_request: str) -> str:
         # === KICKOFF STAGE 1: CrewAI ===
         self.update_state(state='PROGRESS', meta={'status': 'STAGE 1: CrewAI Started...'})
         logger.info(f"Pipeline started for company: {company_id}")
-        recomind_crew, source_db_settings = create_crew(company_id)
+        recomind_crew, source_db_settings = create_crew(company_id, team_name)
 
         if not recomind_crew:
             logger.error("❌ Crew creation failed. Aborting pipeline.")
