@@ -31,4 +31,4 @@ EXPOSE 8000
 # --- [MODIFICATION] ---
 # Set the new Uvicorn startup command
 # (Replaces the old Gunicorn command)
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "/embedding"]
