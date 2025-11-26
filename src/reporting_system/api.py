@@ -150,6 +150,6 @@ async def health_check():
 if __name__ == "__main__":
     print("--- Starting Uvicorn server (for testing) ---")
     print("--- DO NOT run this way in production ---")
-    print("--- Use: uvicorn api:app --reload --port 8000 ---")
-    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)
+    print("--- Use: uvicorn api:app --reload --port 8001 ---")
+    uvicorn.run("api:app", host="127.0.0.1", port=8001, reload=True)
 
