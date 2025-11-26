@@ -52,5 +52,5 @@ EXPOSE 8000
 
 # This is the command that will run when the API container starts
 # The 'worker' container will override this using its 'command:' in docker-compose
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000" ,"--root-path", "/reporting"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
 
