@@ -24,7 +24,9 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Data Ingestion API (with Celery)",
     description="API to trigger the long-running data ingestion pipeline via a task queue.",
-    version="2.0.0"
+    version="2.0.0",
+    root_path="/embedding",
+    servers=[{"url": "/embedding"}]
 )
 
 # --- Pydantic Models ---
