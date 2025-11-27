@@ -29,11 +29,7 @@ celery_app = Celery(
 
 celery_app.conf.update(
     task_track_started=True,
-    broker_connection_retry_on_startup=True,
-    # Use pickle to handle complex exceptions (like litellm errors)
-    task_serializer='pickle',
-    result_serializer='pickle',
-    accept_content=['pickle', 'json']
+    broker_connection_retry_on_startup=True
 )
 
 if __name__ == "__main__":
