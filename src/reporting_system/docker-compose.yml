@@ -54,6 +54,7 @@ services:
     # --- [MODIFICATION] ---
     # The worker also needs the crewai "trick"
     environment:
+      - C_FORCE_ROOT=true # Force Celery to run as root with pickle
       - OPENAI_API_KEY=${OPENROUTER_API_KEY}
       - OPENAI_API_BASE=${BASE_URL}
       - OPENAI_MODEL_NAME=${crewai_LLM_MODEL}
