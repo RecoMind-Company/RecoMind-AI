@@ -29,7 +29,8 @@ celery_app = Celery(
 
 celery_app.conf.update(
     task_track_started=True,
-    broker_connection_retry_on_startup=True
+    broker_connection_retry_on_startup=True,
+    task_default_queue='reporting_queue'  # <-- [IMPORTANT] Isolate this worker's queue
 )
 
 if __name__ == "__main__":
