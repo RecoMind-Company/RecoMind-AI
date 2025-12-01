@@ -103,8 +103,9 @@ class VectorDBTableSearchTool(BaseSQLTool):
             
             if self.team_name:
                 print(f"🔍 Filtering tables by Team: {self.team_name}")
-                query_parts.append("AND team_name ILIKE %s")
-                params.append(f"%{self.team_name}%")
+                # Use ANY operator to search within the text array
+                query_parts.append("AND %s = ANY(team_name)")
+                params.append(self.team_name)
             else:
                 print("🔍 No Team filter applied. Searching all tables.")
 
