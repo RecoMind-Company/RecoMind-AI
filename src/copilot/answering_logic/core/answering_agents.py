@@ -1,7 +1,5 @@
 # answering_agents.py
 from crewai import Agent
-from langchain_openai import ChatOpenAI
-import json
 
 
 # AGENT 1: Intent Understanding Agent

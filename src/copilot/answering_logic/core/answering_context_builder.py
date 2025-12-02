@@ -1,25 +1,18 @@
 # answering_context_builder.py
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import psycopg2
 from crewai import Crew, Process
 from typing import Dict, Any, Tuple
-from shared.config import get_vector_db_url
-
-# Import configurations (PostgreSQL credentials for metadata DB)
+from shared.config import get_vector_db_url, get_llm
 from shared import config
-
-# Import internal components
-from .answering_engine import llm, get_configured_agents
-from .answering_engine import get_tasks
-from shared.config import get_llm
+from core.answering_engine import get_configured_agents, get_tasks
 
 
-# ================================================================
-# 1. Fetch Source DB Settings for the Given Company
-# ================================================================
 def get_source_db_settings_from_postgres(company_id: str) -> Dict[str, str] | None:
-    """
-    Retrieves source DB connection details for a specific company from the metadata DB.
-    """
+    """Retrieves source DB connection details for a specific company."""
     conn = None
     try:
         conn = psycopg2.connect(
@@ -42,7 +35,7 @@ def get_source_db_settings_from_postgres(company_id: str) -> Dict[str, str] | No
         record = cur.fetchone()
 
         if record:
-            print(f"✔ Source DB settings loaded for Company {company_id}")
+            print("Source DB settings loaded successfully.")
             return {
                 "db_server": record[0],
                 "db_database": record[1],
@@ -50,11 +43,11 @@ def get_source_db_settings_from_postgres(company_id: str) -> Dict[str, str] | No
                 "db_password": record[3]
             }
         else:
-            print(f"✖ No DB settings found for company {company_id}")
+            print("No DB settings found.")
             return None
 
     except Exception as err:
-        print(f"✖ Error loading source DB settings: {err}")
+        print(f"Error loading source DB settings: {err}")
         return None
 
     finally:
@@ -63,14 +56,8 @@ def get_source_db_settings_from_postgres(company_id: str) -> Dict[str, str] | No
             conn.close()
 
 
-# ================================================================
-# 2. Fetch ALL Company Tables
-# ================================================================
 def get_all_company_tables(company_id: str) -> list[str]:
-    """
-    Fetches **all tables belonging to the company** from metadata DB.
-    Used by RBAC Agent.
-    """
+    """Fetches all tables belonging to the company from metadata DB."""
     conn = None
     try:
         conn = psycopg2.connect(
@@ -91,11 +78,11 @@ def get_all_company_tables(company_id: str) -> list[str]:
         rows = cur.fetchall()
 
         all_tables = [r[0] for r in rows]
-        print(f"✔ Loaded {len(all_tables)} total tables for company {company_id}")
+        print(f"Loaded {len(all_tables)} tables.")
         return all_tables
 
     except Exception as e:
-        print(f"✖ Error fetching company tables: {e}")
+        print(f"Error fetching company tables: {e}")
         return []
 
     finally:
@@ -104,56 +91,37 @@ def get_all_company_tables(company_id: str) -> list[str]:
             conn.close()
 
 
-# ================================================================
-# 3. Crew Factory – Build Agents + Tasks + Params
-# ================================================================
 def create_crew_and_params(user_query: str, company_id: str, team_name: str) -> Tuple[Crew | None, Dict[str, Any] | None]:
-
+    """Creates and configures the Crew with all agents and tasks."""
     if not company_id or not team_name:
-        print("✖ company_id and team_name are required.")
+        print("company_id and team_name are required.")
         return None, None
 
-    # 1️⃣ Fetch Source DB Settings
     source_db_settings = get_source_db_settings_from_postgres(company_id)
     if not source_db_settings:
         return None, None
 
-    # 2️⃣ Load ALL tables for this company
     all_company_tables = get_all_company_tables(company_id)
 
-    # 3️⃣ Tool Parameters passed to all agents
     tool_params = {
-        # Source DB (Main SQL Server DB)
         "db_server": source_db_settings["db_server"],
         "db_database": source_db_settings["db_database"],
         "db_username": source_db_settings["db_username"],
         "db_password": source_db_settings["db_password"],
-
-        # Metadata / Vector DB (PostgreSQL)
         "vector_db_host": config.VECTOR_DB_HOST,
         "vector_db_name": config.VECTOR_DB_NAME,
         "vector_db_user": config.VECTOR_DB_USER,
         "vector_db_password": config.VECTOR_DB_PASSWORD,
-
-        # User Context (RBAC)
         "company_id": company_id,
         "team_name": team_name,
-
-        # For RBAC agent filtering
         "all_company_tables": all_company_tables,
         "metadata_url": get_vector_db_url()
     }
 
-    # 4️⃣ LLM Instance
     llm_instance = get_llm()
-
-    # 5️⃣ Configure Agents (with tools + params)
     agents = get_configured_agents(tool_params, llm_instance)
-
-    # 6️⃣ Create Tasks (intent agent → RBAC agent → retrieval → schema → SQL generator → executor)
     tasks = get_tasks(company_id=company_id, team_name=team_name)
 
-    # 7️⃣ Build Crew
     crew = Crew(
         agents=agents,
         tasks=tasks,

@@ -1,13 +1,14 @@
 # answering_tasks.py
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from crewai import Task
 from pydantic import BaseModel, Field
-from typing import Any, List, Dict , Optional
+from typing import Any, List, Dict, Optional
 
-# ---------------------------------------------------------------
-# Import your 6 answering agents
-# ---------------------------------------------------------------
-from .answering_agents import (
-    intent_understanding_agent, 
+from core.answering_agents import (
+    intent_understanding_agent,
     access_control_filter_agent,
     table_column_detection_agent,
     sql_generator_agent,
@@ -15,28 +16,31 @@ from .answering_agents import (
     final_answer_agent
 )
 
-# ===================================================================
-# 1. Pydantic Models (Structured outputs)
-# ===================================================================
 
+# Pydantic Models
 class IntentOutput(BaseModel):
     operation: str = Field(description="SUM | COUNT | AVG | SHOW")
-    metric_word: str = Field(description="The metric to analyze")
+    metric_word: Optional[str] = Field(default=None, description="The metric to analyze")
     conditions: Dict[str, Any] = Field(description="Filtering conditions extracted from the user query")
+
 
 class RBACOutput(BaseModel):
     allowed_tables: List[str] = Field(description="Tables the team is allowed to access")
+
 
 class SchemaMappingOutput(BaseModel):
     table_name: str = Field(description="Selected table most relevant to the query")
     selected_column: str = Field(description="Column used for metric")
     group_by_column: Optional[str] = Field(default=None, description="Optional column used for grouping")
 
+
 class SQLQueryOutput(BaseModel):
     sql_query: str = Field(description="Final SQL SELECT query")
 
+
 class SQLResultOutput(BaseModel):
     result: Any = Field(description="Executed SQL result or error JSON")
+
 
 task_intent = Task(
     name="intent_task",
@@ -54,13 +58,8 @@ task_intent = Task(
 )
 
 
-# -------------------------------------------------
-# TASK 2 — RBAC Filtering (ديناميكي)
-# -------------------------------------------------
 def create_rbac_task(company_id: int, team_name: str, task_intent: Task) -> Task:
-    """
-    ترجع نسخة من RBAC task بالقيم runtime.
-    """
+    """Creates RBAC task with runtime values."""
     return Task(
         name="rbac_task",
         description=(
@@ -75,10 +74,8 @@ def create_rbac_task(company_id: int, team_name: str, task_intent: Task) -> Task
     )
 
 
-# -------------------------------------------------
-# TASK 3 — Semantic Table + Column Detection
-# -------------------------------------------------
 def create_schema_task(task_intent: Task, task_rbac: Task) -> Task:
+    """Creates schema detection task."""
     return Task(
         name="schema_task",
         description=(
@@ -96,10 +93,8 @@ def create_schema_task(task_intent: Task, task_rbac: Task) -> Task:
     )
 
 
-# -------------------------------------------------
-# TASK 4 — SQL Generation
-# -------------------------------------------------
 def create_sql_gen_task(task_intent: Task, task_schema: Task) -> Task:
+    """Creates SQL generation task."""
     return Task(
         name="sql_gen_task",
         description=(
@@ -114,10 +109,8 @@ def create_sql_gen_task(task_intent: Task, task_schema: Task) -> Task:
     )
 
 
-# -------------------------------------------------
-# TASK 5 — SQL Execution
-# -------------------------------------------------
 def create_sql_exec_task(task_sql_gen: Task) -> Task:
+    """Creates SQL execution task."""
     return Task(
         name="sql_exec_task",
         description=(
@@ -132,10 +125,8 @@ def create_sql_exec_task(task_sql_gen: Task) -> Task:
     )
 
 
-# -------------------------------------------------
-# TASK 6 — Final User-Friendly Answer
-# -------------------------------------------------
 def create_final_task(task_sql_exec: Task) -> Task:
+    """Creates final answer task."""
     return Task(
         name="final_answer_task",
         description=(
