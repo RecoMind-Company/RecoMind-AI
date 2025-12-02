@@ -1,8 +1,13 @@
-
-from crewai import Crew, Process
+# answering_engine.py
+import os
+from crewai.llm import LLM
 from typing import List, Dict, Any
+from sentence_transformers import SentenceTransformer
 from shared.config import get_llm
 
+
+
+llm = get_llm()
 # -------------------------------
 # Import Agents
 # -------------------------------
@@ -26,20 +31,35 @@ from .answering_tools import (
 )
 
 # -------------------------------
-# Import the Final Task (which contains the entire task chain in its context)
+# Import Tasks
 # -------------------------------
-from .answering_tasks import get_final_answer_task
+from .answering_tasks import (
+    task_intent,
+    create_rbac_task,
+    create_schema_task,
+    create_sql_gen_task,
+    create_sql_exec_task,
+    create_final_task
+)
 
-# ================================================================
-# 1. Agent Configuration (Tools and LLM Assignment)
-# ================================================================
 
+# -------------------------------
+# 5️⃣ تكوين الوكلاء (Agents)
+# -------------------------------
 def get_configured_agents(tool_params: Dict[str, Any], llm) -> List:
     """
-    Configures all six agents by assigning their required tools and the LLM instance.
+    Configures and returns the list of agents with their tools and LLM.
     """
-    
-    # List of all agents in the pipeline
+
+    # Assign tools to specific agents
+    access_control_filter_agent.tools = [GetAllowedTablesTool(**tool_params)]
+    table_column_detection_agent.tools = [
+        VectorDBTableSearchTool(**tool_params),
+        GetAvailableColumnsTool(**tool_params)
+    ]
+    sql_execution_agent.tools = [ExecuteSQLQueryTool(**tool_params)]
+
+    # قائمة جميع الوكلاء (agents)
     all_agents = [
         intent_understanding_agent,
         access_control_filter_agent,
@@ -49,53 +69,34 @@ def get_configured_agents(tool_params: Dict[str, Any], llm) -> List:
         final_answer_agent
     ]
 
-    # -------------------------------
-    # Assign tools to the relevant agents
-    # -------------------------------
-    # Agent 2: RBAC Filter
-    access_control_filter_agent.tools = [GetAllowedTablesTool]
-    
-    # Agent 3: Schema Mapping
-    table_column_detection_agent.tools = [VectorDBTableSearchTool, GetAvailableColumnsTool]
-    
-    # Agent 5: SQL Executor
-    sql_execution_agent.tools = [ExecuteSQLQueryTool]
-
-    # Assign the LLM instance to all agents
+    # ربط كل وكيل بالـ LLM
     for agent in all_agents:
         agent.llm = llm
 
     return all_agents
 
-# ================================================================
-# 2. Crew Creation Function (The Builder)
-# ================================================================
-
-def create_sql_generation_crew(user_query: str, company_id: int, team_name: str, tool_params: Dict[str, Any]) -> Crew:
+# -------------------------------
+# 6️⃣ تكوين المهام (Tasks)
+# -------------------------------
+def get_tasks(company_id: int, team_name: str) -> List:
     """
-    Creates the complete CrewAI setup for the Auto-SQL system.
-    
-    The process is set to sequential to enforce the necessary step-by-step
-    data flow (Intent -> RBAC -> Schema -> SQL Gen -> SQL Exec -> Answer).
+    Returns the sequential list of tasks for the crew with dynamic RBAC task.
     """
-    
-    # 1. Get the configured LLM instance
-    llm = get_llm()
-    
-    # 2. Configure agents with tools and LLM
-    agents = get_configured_agents(tool_params, llm)
+    # 1️⃣ RBAC Task ديناميكي
+    task_rbac = create_rbac_task(company_id=company_id, team_name=team_name, task_intent=task_intent)
 
-    # 3. Define Tasks: The final task encapsulates the entire sequential pipeline 
-    # through its context dependency chain defined in tasks_answer.py
-    tasks = [get_final_answer_task(company_id, team_name, user_query)]
+    # 2️⃣ باقي الـ tasks تبعًا للـ context الجديد
+    task_schema = create_schema_task(task_intent, task_rbac)
+    task_sql_gen = create_sql_gen_task(task_intent, task_schema)
+    task_sql_exec = create_sql_exec_task(task_sql_gen)
+    task_final = create_final_task(task_sql_exec)
 
-    # 4. Create the Crew
-    crew = Crew(
-        agents=agents,
-        tasks=tasks,
-        process=Process.sequential,  
-        verbose=2                    
-    )
-
-    return crew
-
+    # 3️⃣ إرجاع كل الـ tasks بالترتيب
+    return [
+        task_intent,
+        task_rbac,
+        task_schema,
+        task_sql_gen,
+        task_sql_exec,
+        task_final
+    ]

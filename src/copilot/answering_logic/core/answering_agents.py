@@ -1,4 +1,6 @@
+# answering_agents.py
 from crewai import Agent
+from langchain_openai import ChatOpenAI
 import json
 
 
@@ -30,8 +32,15 @@ intent_understanding_agent = Agent(
         "   If the question asks to list or display rows, use SHOW.\n\n"
 
         "2. **Metric Word Extraction:**\n"
-        "   Extract ONLY the key measurable concept (e.g., sales, revenue, orders, users).\n"
-        "   Return it in the 'metric_word' field.\n\n"
+        "   Extract ONLY the key measurable concept explicitly mentioned in the user's question.\n"
+        "   Examples: sales, revenue, orders, products, customers.\n\n"
+
+        "   ### ZERO-GUESSING RULE ###\n"
+        "   - You MUST NOT guess or infer the metric_word.\n"
+        "   - The metric_word MUST come directly and explicitly from the user’s question.\n"
+        "   - If the user does NOT clearly specify a measurable concept, return:\n"
+        "       \"metric_word\": null\n"
+        "   - NEVER default to 'users'. Only use 'users' if the user explicitly said it.\n\n"
 
         "3. **Conditions Extraction:**\n"
         "   Identify all filters and place them inside the 'conditions' object.\n"
@@ -42,7 +51,7 @@ intent_understanding_agent = Agent(
         "4. **FINAL JSON SCHEMA (MUST FOLLOW EXACTLY):**\n"
         "{\n"
         "  \"operation\": \"SUM | COUNT | AVG | SHOW\",\n"
-        "  \"metric_word\": \"<string>\",\n"
+        "  \"metric_word\": \"<string or null>\",\n"
         "  \"conditions\": { <key>: <value> }\n"
         "}\n\n"
 
@@ -53,14 +62,9 @@ intent_understanding_agent = Agent(
 
     verbose=True,
     allow_delegation=False,
-    tools=[],          
-    max_iter=3
+    tools=[],
+    max_iter=3,
 )
-
-
-
-
-
 # --- AGENT 2: Access Control Filter ---
 access_control_filter_agent = Agent(
     
@@ -90,7 +94,7 @@ access_control_filter_agent = Agent(
     allow_delegation=False,
     
     tools=[], 
-    max_iter=2  
+    max_iter=2
 )
 
 
@@ -124,11 +128,9 @@ table_column_detection_agent = Agent(
     verbose=True,
     allow_delegation=False,
     tools=[], 
-    max_iter=5 
+    max_iter=5
+    
 )
-
-
-
 
 # AGENT 4: SQL Generator Agent 
 sql_generator_agent = Agent(
@@ -158,7 +160,7 @@ sql_generator_agent = Agent(
     
     verbose=True,
     allow_delegation=False,
-    max_iter=3 
+    max_iter=3
 )
 
 
@@ -190,7 +192,7 @@ sql_execution_agent = Agent(
     verbose=True,
     allow_delegation=False,
     tools=[], 
-    max_iter=2 
+    max_iter=2
 )
 
 

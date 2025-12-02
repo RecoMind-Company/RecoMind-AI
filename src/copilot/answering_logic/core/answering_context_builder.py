@@ -1,14 +1,15 @@
-
+# answering_context_builder.py
 import psycopg2
 from crewai import Crew, Process
 from typing import Dict, Any, Tuple
+from shared.config import get_vector_db_url
 
 # Import configurations (PostgreSQL credentials for metadata DB)
 from shared import config
 
 # Import internal components
-from .answering_engine import get_configured_agents
-from .answering_tasks import get_final_answer_task
+from .answering_engine import llm, get_configured_agents
+from .answering_engine import get_tasks
 from shared.config import get_llm
 
 
@@ -23,7 +24,7 @@ def get_source_db_settings_from_postgres(company_id: str) -> Dict[str, str] | No
     try:
         conn = psycopg2.connect(
             host=config.VECTOR_DB_HOST,
-            dbname=config.VECTOR_DB_NAME,
+            database=config.VECTOR_DB_NAME,
             user=config.VECTOR_DB_USER,
             password=config.VECTOR_DB_PASSWORD
         )
@@ -63,19 +64,18 @@ def get_source_db_settings_from_postgres(company_id: str) -> Dict[str, str] | No
 
 
 # ================================================================
-# 2. (OPTIONAL) Fetch ALL Company Tables
+# 2. Fetch ALL Company Tables
 # ================================================================
 def get_all_company_tables(company_id: str) -> list[str]:
     """
     Fetches **all tables belonging to the company** from metadata DB.
-    Used by RBAC Agent to perform:
-        all tables → allowed tables  → final table
+    Used by RBAC Agent.
     """
     conn = None
     try:
         conn = psycopg2.connect(
             host=config.VECTOR_DB_HOST,
-            dbname=config.VECTOR_DB_NAME,
+            database=config.VECTOR_DB_NAME,
             user=config.VECTOR_DB_USER,
             password=config.VECTOR_DB_PASSWORD
         )
@@ -83,7 +83,7 @@ def get_all_company_tables(company_id: str) -> list[str]:
 
         query = """
             SELECT table_name
-            FROM table_registry
+            FROM rbac_table_metadata
             WHERE company_id = %s;
         """
         
@@ -118,58 +118,48 @@ def create_crew_and_params(user_query: str, company_id: str, team_name: str) -> 
     if not source_db_settings:
         return None, None
 
-    # 2️⃣ (Optional but recommended)
-    #    Load ALL tables for this company (100 tables)
+    # 2️⃣ Load ALL tables for this company
     all_company_tables = get_all_company_tables(company_id)
 
     # 3️⃣ Tool Parameters passed to all agents
     tool_params = {
-        # Source DB (Agent 5)
+        # Source DB (Main SQL Server DB)
         "db_server": source_db_settings["db_server"],
         "db_database": source_db_settings["db_database"],
         "db_username": source_db_settings["db_username"],
         "db_password": source_db_settings["db_password"],
 
-        # Metadata DB (Agent 2 & 3)
+        # Metadata / Vector DB (PostgreSQL)
         "vector_db_host": config.VECTOR_DB_HOST,
         "vector_db_name": config.VECTOR_DB_NAME,
         "vector_db_user": config.VECTOR_DB_USER,
         "vector_db_password": config.VECTOR_DB_PASSWORD,
 
-        # User Context (RBAC filtering)
+        # User Context (RBAC)
         "company_id": company_id,
         "team_name": team_name,
 
-        # For RBAC table filtering logic
-        "all_company_tables": all_company_tables
+        # For RBAC agent filtering
+        "all_company_tables": all_company_tables,
+        "metadata_url": get_vector_db_url()
     }
 
     # 4️⃣ LLM Instance
     llm_instance = get_llm()
 
-    # 5️⃣ Configure Agents
+    # 5️⃣ Configure Agents (with tools + params)
     agents = get_configured_agents(tool_params, llm_instance)
 
-    # 6️⃣ Create Tasks
-    tasks = [
-        get_final_answer_task(
-            company_id=company_id,    
-            team_name=team_name,
-            user_query=user_query
-        )
-    ]
+    # 6️⃣ Create Tasks (intent agent → RBAC agent → retrieval → schema → SQL generator → executor)
+    tasks = get_tasks(company_id=company_id, team_name=team_name)
 
     # 7️⃣ Build Crew
     crew = Crew(
         agents=agents,
         tasks=tasks,
         process=Process.sequential,
-        verbose=2,
+        verbose=True,
         llm=llm_instance
     )
 
-    print(f"✔ Crew is ready for Company {company_id}")
-    return crew, tool_params
-
-
-
+    return crew, source_db_settings

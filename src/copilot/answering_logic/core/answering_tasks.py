@@ -1,143 +1,149 @@
+# answering_tasks.py
 from crewai import Task
-from typing import Any, List
+from pydantic import BaseModel, Field
+from typing import Any, List, Dict , Optional
 
-# Import your agents (only 6 agents)
+# ---------------------------------------------------------------
+# Import your 6 answering agents
+# ---------------------------------------------------------------
 from .answering_agents import (
     intent_understanding_agent, 
-    access_control_filter_agent, 
+    access_control_filter_agent,
     table_column_detection_agent,
     sql_generator_agent,
     sql_execution_agent,
     final_answer_agent
 )
 
-# ================================================================
-# --- 1. Intent Extraction Task (JSON 1)
-#     Detect user intent and convert it into a structured JSON.
-# ================================================================
+# ===================================================================
+# 1. Pydantic Models (Structured outputs)
+# ===================================================================
 
-def get_intent_task(user_query: str) -> Task:
+class IntentOutput(BaseModel):
+    operation: str = Field(description="SUM | COUNT | AVG | SHOW")
+    metric_word: str = Field(description="The metric to analyze")
+    conditions: Dict[str, Any] = Field(description="Filtering conditions extracted from the user query")
+
+class RBACOutput(BaseModel):
+    allowed_tables: List[str] = Field(description="Tables the team is allowed to access")
+
+class SchemaMappingOutput(BaseModel):
+    table_name: str = Field(description="Selected table most relevant to the query")
+    selected_column: str = Field(description="Column used for metric")
+    group_by_column: Optional[str] = Field(default=None, description="Optional column used for grouping")
+
+class SQLQueryOutput(BaseModel):
+    sql_query: str = Field(description="Final SQL SELECT query")
+
+class SQLResultOutput(BaseModel):
+    result: Any = Field(description="Executed SQL result or error JSON")
+
+task_intent = Task(
+    name="intent_task",
+    description=(
+        "Analyze the user query and extract:\n"
+        "1) operation\n"
+        "2) metric_word\n"
+        "3) conditions\n"
+        "Return ONLY a valid JSON."
+    ),
+    expected_output="A JSON with keys: operation, metric_word, conditions.",
+    agent=intent_understanding_agent,
+    human_input=False,
+    output_pydantic=IntentOutput,
+)
+
+
+# -------------------------------------------------
+# TASK 2 — RBAC Filtering (ديناميكي)
+# -------------------------------------------------
+def create_rbac_task(company_id: int, team_name: str, task_intent: Task) -> Task:
+    """
+    ترجع نسخة من RBAC task بالقيم runtime.
+    """
     return Task(
+        name="rbac_task",
         description=(
-            f"Analyze the following user query: '{user_query}'. "
-            "Extract operation, metric_word, and filtering conditions. "
-            "Return ONLY a single JSON object following the STRICT RULES."
+            f"Call GetAllowedTablesTool using company_id={company_id}, team_name='{team_name}'.\n"
+            "Return ONLY the allowed tables JSON."
         ),
-        expected_output=(
-            "{'operation': 'SUM|COUNT|AVG|SHOW', "
-            "'metric_word': 'str', "
-            "'conditions': {key: value}}"
-        ),
-        agent=intent_understanding_agent,
-        human_input=False
-    )
-
-
-# ================================================================
-# --- 2. RBAC Filtering Task (JSON 2)
-#     Determine which tables this team is allowed to access.
-# ================================================================
-
-def get_rbac_task(company_id: int, team_name: str, user_query: str) -> Task:
-    return Task(
-        description=(
-            f"Execute GetAllowedTablesTool with Company ID={company_id}, Team='{team_name}'. "
-            "Return ONLY the tool's JSON output 'allowed_tables'."
-        ),
-        expected_output="{ 'allowed_tables': ['table1', 'table2', ...] }",
+        expected_output="A JSON object with key: allowed_tables.",
         agent=access_control_filter_agent,
-        context=[
-            get_intent_task(user_query)
-        ],
-        human_input=False
+        context=[task_intent],
+        human_input=False,
+        output_pydantic=RBACOutput,
     )
 
 
-# ================================================================
-# --- 3. Schema/Table Detection Task (JSON 3)
-#     Detect the correct table + column(s) using intent + RBAC output.
-# ================================================================
-
-def get_schema_mapping_task(company_id: int, team_name: str, user_query: str) -> Task:
+# -------------------------------------------------
+# TASK 3 — Semantic Table + Column Detection
+# -------------------------------------------------
+def create_schema_task(task_intent: Task, task_rbac: Task) -> Task:
     return Task(
+        name="schema_task",
         description=(
-            "Use JSON 1 (intent) and JSON 2 (allowed tables). "
-            "1) Run VectorDBTableSearchTool to detect best table. "
-            "2) Run GetAvailableColumnsTool for schema. "
-            "3) Return JSON 3: table_name, selected_column, group_by_column."
+            "Using Intent JSON and RBAC JSON:\n"
+            "1) Perform semantic table search\n"
+            "2) Fetch full schema columns\n"
+            "3) Return: table_name, selected_column, group_by_column"
         ),
-        expected_output=(
-            "{ 'table_name': 'str', "
-            "'selected_column': 'str', "
-            "'group_by_column': 'str|null' }"
-        ),
+        expected_output="A JSON object with keys: table_name, selected_column, group_by_column.",
         agent=table_column_detection_agent,
-        context=[
-            get_intent_task(user_query),
-            get_rbac_task(company_id, team_name, user_query)
-        ],
-        human_input=False
+        context=[task_intent, task_rbac],
+        human_input=False,
+        output_pydantic=SchemaMappingOutput,
+        llm_delegate=False
     )
 
 
-# ================================================================
-# --- 4. SQL Generation Task
-#     Generate the final SQL SELECT statement from JSON 1 + JSON 3.
-# ================================================================
-
-def get_sql_generation_task(company_id: int, team_name: str, user_query: str) -> Task:
+# -------------------------------------------------
+# TASK 4 — SQL Generation
+# -------------------------------------------------
+def create_sql_gen_task(task_intent: Task, task_schema: Task) -> Task:
     return Task(
+        name="sql_gen_task",
         description=(
-            "Compile SQL using JSON 1 (intent) and JSON 3 (schema mapping). "
-            "Return ONLY the raw SQL SELECT query."
+            "Using Intent JSON and Schema Mapping JSON:\n"
+            "Generate ONLY the raw SQL SELECT query."
         ),
-        expected_output="SELECT ...",
+        expected_output="SQL query string.",
         agent=sql_generator_agent,
-        context=[
-            get_intent_task(user_query),
-            get_schema_mapping_task(company_id, team_name, user_query)
-        ],
-        human_input=False
+        context=[task_intent, task_schema],
+        human_input=False,
+        output_pydantic=SQLQueryOutput,
     )
 
 
-# ================================================================
-# --- 5. SQL Execution Task
-#     Validate SQL for security and execute it using the ExecuteSQLQueryTool.
-# ================================================================
-
-def get_sql_execution_task(company_id: int, team_name: str, user_query: str) -> Task:
+# -------------------------------------------------
+# TASK 5 — SQL Execution
+# -------------------------------------------------
+def create_sql_exec_task(task_sql_gen: Task) -> Task:
     return Task(
+        name="sql_exec_task",
         description=(
-            "Validate SQL for security. "
-            "Execute it using ExecuteSQLQueryTool. "
-            "Return Markdown table or error JSON."
+            "Validate SQL is safe, then execute it using ExecuteSQLQueryTool.\n"
+            "Return raw DataFrame markdown OR error."
         ),
         expected_output="Markdown table OR error JSON.",
         agent=sql_execution_agent,
-        context=[
-            get_sql_generation_task(company_id, team_name, user_query)
-        ],
-        human_input=False
+        context=[task_sql_gen],
+        human_input=False,
+        output_pydantic=SQLResultOutput,
     )
 
 
-# ================================================================
-# --- 6. Final Answer Generation Task
-#     Convert the SQL result into a friendly natural-language answer.
-# ================================================================
-
-def get_final_answer_task(company_id: int, team_name: str, user_query: str) -> Task:
+# -------------------------------------------------
+# TASK 6 — Final User-Friendly Answer
+# -------------------------------------------------
+def create_final_task(task_sql_exec: Task) -> Task:
     return Task(
+        name="final_answer_task",
         description=(
-            "Interpret the SQL result and convert it into a natural language "
-            f"answer for the user query: '{user_query}'. "
-            "Do NOT include any backend or technical details."
+            "Interpret the SQL result and answer the user in natural language.\n"
+            "Never reveal SQL or database details."
         ),
-        expected_output="A friendly natural language answer.",
+        expected_output="Friendly natural language answer.",
         agent=final_answer_agent,
-        context=[
-            get_sql_execution_task(company_id, team_name, user_query)
-        ],
-        human_input=False
+        context=[task_sql_exec],
+        human_input=False,
     )

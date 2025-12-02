@@ -1,46 +1,44 @@
+
 # shared/config.py
-from crewai.llm import LLM
-from langchain_openai import ChatOpenAI
+from urllib.parse import quote
 import os
 from dotenv import load_dotenv
+from crewai.llm import LLM   # ← هذا هو المطلوب من CrewAI
 
-# Load environment variables from the root .env file
+# تحميل المتغيرات من .env
 load_dotenv()
 
-# --- THIS IS THE ONLY PLACE WHERE THE LLM AND ENV VARS ARE DEFINED ---
-# You can adjust model parameters here for both the Data Collection Crew and the Auto Analyst.
-crewai_LLM_MODEL = os.getenv("crewai_LLM_MODEL")
+# --- LLM Configuration Variables ---
+CREWAI_LLM_MODEL = os.getenv("crewai_LLM_MODEL", "gpt-3.5-turbo") 
+BASE_URL = os.getenv("BASE_URL", "https://api.openai.com/v1")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-langgraph_LLM_MODEL = os.getenv("langgraph_LLM_MODEL")
 
-BASE_URL = os.getenv("BASE_URL")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
-# Enhanced LLM Configuration for Data Collection Crew
 def get_llm() -> LLM:
-    """Creates and configures the Language Model for the crew."""
-    # The 'llm_params' dictionary is where you control the model's behavior.
-    llm_params = {
-        "temperature": 0.0,
-    }
+    """
+    Returns a CrewAI-compatible LLM object.
+    This is the ONLY correct LLM format for CrewAI Agents.
+    """
 
     return LLM(
-        model=crewai_LLM_MODEL,
+        model=CREWAI_LLM_MODEL,
         base_url=BASE_URL,
-        api_key=OPENROUTER_API_KEY,
-        model_kwargs=llm_params 
+        api_key=OPENAI_API_KEY,
     )
 
-# Enhanced LLM Configuration for Auto Analyst
-llm_model = ChatOpenAI(
-    model=langgraph_LLM_MODEL,
-    base_url=BASE_URL,
-    api_key=OPENROUTER_API_KEY
-)
-
-# --- Static Configuration (Always Loaded) ---
-
-# Destination Vector DB Connection (PostgreSQL)
+def get_vector_db_url() -> str:
+    """
+    تُعيد رابط اتصال SQLAlchemy الصحيح لقاعدة بيانات المتجهات/البيانات الوصفية (PostgreSQL).
+    """
+    # استخدام 'postgresql+psycopg2' كـ (dialect+driver) والمنفذ الافتراضي 5432
+    encoded_password = quote(VECTOR_DB_PASSWORD)
+    return (
+        f"postgresql://{VECTOR_DB_USER}:{encoded_password}"
+        f"@{VECTOR_DB_HOST}:6543/{VECTOR_DB_NAME}"
+    )
+# ---------------------------
+# Database Configuration 
+# ---------------------------
 VECTOR_DB_HOST = os.getenv("VECTOR_DB_HOST")
 VECTOR_DB_NAME = os.getenv("VECTOR_DB_NAME")
 VECTOR_DB_USER = os.getenv("VECTOR_DB_USER")
