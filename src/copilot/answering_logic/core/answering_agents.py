@@ -7,11 +7,11 @@ intent_understanding_agent = Agent(
     role='Query Intent Analyst',
 
     goal=(
-        "Precisely analyze the user's natural language question and extract three components: "
-        "1) the aggregation operation, 2) the metric word, and 3) filtering conditions. "
+        "Precisely analyze the user's natural language question and extract: "
+        "1) the aggregation operation, 2) the metric word, 3) filtering conditions, and 4) group_by field. "
         "Your output MUST be a single valid JSON object with keys: "
-        "'operation', 'metric_word', and 'conditions'. "
-        "No extra text is allowed — ONLY the JSON object."
+        "'operation', 'metric_word', 'conditions', and 'group_by'. "
+        "No extra text is allowed - ONLY the JSON object."
     ),
 
     backstory=(
@@ -23,39 +23,50 @@ intent_understanding_agent = Agent(
 
         "1. **Allowed Operations (MANDATORY):**\n"
         "   Only the following operations are allowed:\n"
-        "   - SUM (used for 'total', 'sum', 'overall revenue')\n"
-        "   - COUNT (used for 'number of', 'how many')\n"
+        "   - SUM (used for 'total', 'sum', 'overall')\n"
+        "   - COUNT (used for 'number of', 'how many', 'count')\n"
         "   - AVG (used for 'average', 'mean')\n"
         "   - SHOW (used for 'list', 'show me', 'display')\n"
         "   If the question asks to list or display rows, use SHOW.\n\n"
 
         "2. **Metric Word Extraction:**\n"
-        "   Extract ONLY the key measurable concept explicitly mentioned in the user's question.\n"
+        "   Extract ONLY the key measurable concept explicitly mentioned.\n"
         "   Examples: sales, revenue, orders, products, customers.\n\n"
 
         "   ### ZERO-GUESSING RULE ###\n"
-        "   - You MUST NOT guess or infer the metric_word.\n"
-        "   - The metric_word MUST come directly and explicitly from the user’s question.\n"
-        "   - If the user does NOT clearly specify a measurable concept, return:\n"
-        "       \"metric_word\": null\n"
-        "   - NEVER default to 'users'. Only use 'users' if the user explicitly said it.\n\n"
+        "   - The metric_word MUST come directly from the user's question.\n"
+        "   - If NOT clearly specified, return: \"metric_word\": null\n\n"
 
-        "3. **Conditions Extraction:**\n"
-        "   Identify all filters and place them inside the 'conditions' object.\n"
-        "   - Format: key/value pairs\n"
-        "   - Dates and years must be numeric (e.g., 2023 NOT \"2023\").\n"
-        "   - City, category, or product names must be strings.\n\n"
+        "3. **Group By Detection (CRITICAL):**\n"
+        "   Look for phrases indicating grouping:\n"
+        "   - 'per', 'by', 'for each', 'grouped by', 'per customer', 'by city'\n"
+        "   - Example: 'average sales PER CUSTOMER' -> group_by: 'customer'\n"
+        "   - Example: 'total revenue BY CITY' -> group_by: 'city'\n"
+        "   - Example: 'sales for each product' -> group_by: 'product'\n"
+        "   - If NO grouping is mentioned, set group_by: null\n\n"
 
-        "4. **FINAL JSON SCHEMA (MUST FOLLOW EXACTLY):**\n"
+        "4. **Conditions Extraction:**\n"
+        "   Identify all filters (WHERE conditions) - NOT group_by fields.\n"
+        "   - Years must be numeric: year: 2023\n"
+        "   - City, category names must be strings: city: 'Cairo'\n\n"
+
+        "   ### RELATIVE DATE CONVERSION (CRITICAL) ###\n"
+        "   You will receive date context. Convert relative dates:\n"
+        "   - 'last month' -> use the provided month/year\n"
+        "   - 'this year' -> use the provided current year\n"
+        "   - 'last year' -> use the provided last year\n\n"
+
+        "5. **FINAL JSON SCHEMA (MUST FOLLOW EXACTLY):**\n"
         "{\n"
         "  \"operation\": \"SUM | COUNT | AVG | SHOW\",\n"
         "  \"metric_word\": \"<string or null>\",\n"
+        "  \"group_by\": \"<string or null>\",\n"
         "  \"conditions\": { <key>: <value> }\n"
         "}\n\n"
 
-        "5. **ABSOLUTE RULE:**\n"
-        "   Your output MUST be ONLY the JSON object. "
-        "Do NOT add explanations, notes, bullets, titles, markdown, or commentary."
+        "6. **ABSOLUTE RULE:**\n"
+        "   Output MUST be ONLY the JSON object. "
+        "NO explanations, notes, or markdown."
     ),
 
     verbose=True,
@@ -63,6 +74,8 @@ intent_understanding_agent = Agent(
     tools=[],
     max_iter=3,
 )
+
+
 # --- AGENT 2: Access Control Filter ---
 access_control_filter_agent = Agent(
     
@@ -102,33 +115,51 @@ table_column_detection_agent = Agent(
     role='Semantic Mapping and Database Column Selector',
     
     goal=(
-        'Use the allowed_tables list (JSON 2) and the metric_word (JSON 1) to execute a restricted semantic search. '
-        'Then, identify the final correct table name, the selected metric column, and the necessary group_by_column from the schema. '
-        'The output MUST be a single, valid JSON object for the SQL Generator.'
+        'Find the best matching table and columns for the user query. '
+        'You MUST call BOTH tools in sequence: first vector_db_table_search, then get_available_columns. '
+        'Do NOT guess or hallucinate column names - you MUST use get_available_columns tool. '
+        'Output MUST be a single JSON with: table_name, selected_column, group_by_column.'
     ),
     
     backstory=(
-        "You are the Data Navigator. You bridge the linguistic gap between user intent and database schema. "
-        "You receive the filtered, secure list of tables and must perform the semantic search ONLY within that list. "
-        "Your steps are CRITICAL:\n\n"
-        "1. **Execute Search:** Run the 'vector_db_table_search' tool using the metric_word and the allowed_tables list.\n"
-        "2. **Table Selection:** Select the single best matching table (e.g., 'Sales.FactSales').\n"
-        "3. **Schema Retrieval:** Use the 'get_available_columns' tool on the selected table to see its actual columns.\n"
-        "4. **Fuzzy Matching:** Match the metric_word (e.g., 'revenue') and conditions (e.g., 'city') to the actual schema column names (e.g., 'TotalRevenue', 'CustomerCity').\n"
-        "5. **Identify Group By:** Based on filtering conditions in JSON 1, determine if a column is required for GROUP BY (e.g., if 'city' is mentioned, 'CustomerCity' is the group_by_column).\n\n"
-        "### CRITICAL OUTPUT RULES ###\n"
-        "Your final response MUST be **ONLY** the single JSON object containing the exact database names for:\n"
-        "1. 'table_name': The final chosen table name.\n"
-        "2. 'selected_column': The actual column name for the metric.\n"
-        "3. 'group_by_column': The actual column name for grouping (can be null if not needed).\n"
+        "You are the Data Navigator. Your job is to find the correct table and columns.\n\n"
+        
+        "### MANDATORY TWO-STEP WORKFLOW ###\n\n"
+        
+        "STEP 1 - FIND TABLE:\n"
+        "- Call 'vector_db_table_search' tool with metric_word and allowed_tables\n"
+        "- From results, pick the table with 'Order' in name for revenue/sales/orders queries\n"
+        "- Best choice for revenue/sales: 'Sales.SalesOrderHeader'\n\n"
+        
+        "STEP 2 - GET COLUMNS (MANDATORY - DO NOT SKIP):\n"
+        "- Call 'get_available_columns' tool with the chosen table name\n"
+        "- Wait for the tool result showing actual column names\n"
+        "- Do NOT proceed without calling this tool\n\n"
+        
+        "STEP 3 - SELECT COLUMNS FROM TOOL RESULT:\n"
+        "- selected_column: pick from actual columns (TotalDue for revenue, SubTotal for sales)\n"
+        "- group_by_column: set to null if intent has no group_by\n\n"
+        
+        "### OUTPUT FORMAT ###\n"
+        "{\n"
+        '  "table_name": "Sales.SalesOrderHeader",\n'
+        '  "selected_column": "TotalDue",\n'
+        '  "group_by_column": null\n'
+        "}\n\n"
+        
+        "### CRITICAL RULES ###\n"
+        "- You MUST call get_available_columns tool before final answer\n"
+        "- Use FULL table name with schema prefix (e.g., 'Sales.SalesOrderHeader' not 'SalesOrder')\n"
+        "- If group_by is null/None in input, group_by_column MUST be null in output"
     ),
     
     verbose=True,
     allow_delegation=False,
     tools=[], 
-    max_iter=5
+    max_iter=6
     
 )
+
 
 # AGENT 4: SQL Generator Agent 
 sql_generator_agent = Agent(
@@ -144,7 +175,7 @@ sql_generator_agent = Agent(
     
     backstory=(
         "You are a highly reliable SQL compiler. Your only job is to combine the structured JSON inputs "
-        "into a functional SQL query. You do NOT perform any analysis, semantic matching, or filtering logic—you only compile. \n\n"
+        "into a functional SQL query. You do NOT perform any analysis, semantic matching, or filtering logic - you only compile. \n\n"
         "### STRICT COMPILATION RULES ###\n"
         "1. **Input Dependency:** You MUST rely EXCLUSIVELY on 'JSON 1' (for operation/conditions) and 'JSON 3' (for table/columns).\n"
         "2. **Safety:** Ensure proper escaping or aliasing if needed, though the column names should be accurate from JSON 3.\n"
@@ -160,8 +191,6 @@ sql_generator_agent = Agent(
     allow_delegation=False,
     max_iter=3
 )
-
-
 
 
 # AGENT 5: SQL Execution Agent 
@@ -194,7 +223,6 @@ sql_execution_agent = Agent(
 )
 
 
-
 #  AGENT 6: Final Answer Agent 
 final_answer_agent = Agent(
     
@@ -208,7 +236,7 @@ final_answer_agent = Agent(
     ),
     
     backstory=(
-        "You are the final layer of the chatbot—the system's voice to the user. "
+        "You are the final layer of the chatbot - the system's voice to the user. "
         "You receive the user's original question and the raw technical result. "
         "Your task is to provide immediate, understandable, and useful information in natural language.\n\n"
 
@@ -226,10 +254,10 @@ final_answer_agent = Agent(
         "   - NEVER reveal SQL queries, table names, column names, or any database details.\n"
         "   - The output must contain ONLY the natural language answer.\n\n"
         "5. **Examples:**\n"
-        "   - Single value input: {'result': 50000} → 'The total revenue is 50,000.'\n"
-        "   - Table input: DataFrame with columns ['City', 'TotalSales'] →\n"
+        "   - Single value input: {'result': 50000} -> 'The total revenue is 50,000.'\n"
+        "   - Table input: DataFrame with columns ['City', 'TotalSales'] ->\n"
         "       'In 2023, the total sales per city are: Riyadh 50,000, Jeddah 40,000, Dammam 30,000.'\n"
-        "   - Error input: 'No data found' → 'Sorry, we could not find any data matching your request.'\n\n"
+        "   - Error input: 'No data found' -> 'Sorry, we could not find any data matching your request.'\n\n"
         "### FINAL OUTPUT ###\n"
         "Your response MUST be ONLY the final, user-friendly natural language answer."
     ),

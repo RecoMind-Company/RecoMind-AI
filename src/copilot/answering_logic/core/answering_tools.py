@@ -144,7 +144,7 @@ class GetAllowedTablesTool(BaseSQLTool):
 
 
 class VectorDBTableSearchTool(BaseSQLTool):
-    """Performs semantic search on schema vectors."""
+    """Performs semantic search on schema vectors with keyword boosting."""
     name: str = "vector_db_table_search"
     description: str = "Performs semantic search on schema vectors."
     args_schema: type[BaseModel] = VectorSearchInput
@@ -180,7 +180,37 @@ class VectorDBTableSearchTool(BaseSQLTool):
             results = cur.fetchall()
 
             table_names = [r[0] for r in results] if results else []
-            return json.dumps(table_names, indent=2)
+            
+            # Keyword-based boosting for common patterns
+            query_lower = query_key.lower()
+            boosted_tables = []
+            
+            # Define keyword-to-table mappings
+            keyword_mappings = {
+                'revenue': ['SalesOrderHeader', 'SalesOrderDetail', 'Order'],
+                'sales': ['SalesOrderHeader', 'SalesOrderDetail', 'Sales', 'Order'],
+                'order': ['SalesOrderHeader', 'SalesOrderDetail', 'Order'],
+                'customer': ['Customer', 'Person'],
+                'product': ['Product', 'ProductCategory', 'ProductSubcategory'],
+                'employee': ['Employee', 'Person', 'HumanResources'],
+            }
+            
+            # Check if any keywords match
+            for keyword, table_patterns in keyword_mappings.items():
+                if keyword in query_lower:
+                    # Boost tables matching these patterns to the front
+                    for t in allowed_tables:
+                        for pattern in table_patterns:
+                            if pattern in t and t not in boosted_tables:
+                                boosted_tables.append(t)
+            
+            # Combine boosted tables with semantic results (boosted first, then semantic)
+            final_results = boosted_tables.copy()
+            for t in table_names:
+                if t not in final_results:
+                    final_results.append(t)
+            
+            return json.dumps(final_results[:12], indent=2)
 
         except Exception as e:
             traceback.print_exc()

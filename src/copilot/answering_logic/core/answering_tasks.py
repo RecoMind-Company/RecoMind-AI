@@ -21,7 +21,8 @@ from core.answering_agents import (
 class IntentOutput(BaseModel):
     operation: str = Field(description="SUM | COUNT | AVG | SHOW")
     metric_word: Optional[str] = Field(default=None, description="The metric to analyze")
-    conditions: Dict[str, Any] = Field(description="Filtering conditions extracted from the user query")
+    group_by: Optional[str] = Field(default=None, description="Field to group results by (e.g., customer, city, product)")
+    conditions: Dict[str, Any] = Field(default_factory=dict, description="Filtering conditions extracted from the user query")
 
 
 class RBACOutput(BaseModel):
@@ -42,16 +43,59 @@ class SQLResultOutput(BaseModel):
     result: Any = Field(description="Executed SQL result or error JSON")
 
 
+from datetime import datetime, timedelta
+
+def get_date_context() -> str:
+    """Generate date context for relative date conversion."""
+    today = datetime.now()
+    last_month = today.replace(day=1) - timedelta(days=1)
+    last_week_end = today - timedelta(days=today.weekday() + 1)
+    last_week_start = last_week_end - timedelta(days=6)
+    
+    return (
+        f"Today is {today.strftime('%Y-%m-%d')}. "
+        f"Current year: {today.year}. "
+        f"Last year: {today.year - 1}. "
+        f"Last month: {last_month.month}, year: {last_month.year}. "
+        f"Yesterday: {(today - timedelta(days=1)).strftime('%Y-%m-%d')}. "
+        f"Last week: {last_week_start.strftime('%Y-%m-%d')} to {last_week_end.strftime('%Y-%m-%d')}."
+    )
+
+
+def create_intent_task(user_query: str) -> Task:
+    """Creates intent task with date context."""
+    date_context = get_date_context()
+    return Task(
+        name="intent_task",
+        description=(
+            f"Analyze this user query: '{user_query}'\n\n"
+            f"DATE CONTEXT: {date_context}\n\n"
+            "Extract:\n"
+            "1) operation (SUM, COUNT, AVG, SHOW)\n"
+            "2) metric_word (the thing being measured)\n"
+            "3) group_by (if 'per', 'by', 'for each' is mentioned)\n"
+            "4) conditions (filters like year, city - convert relative dates!)\n\n"
+            "Return ONLY a valid JSON."
+        ),
+        expected_output="A JSON with keys: operation, metric_word, group_by, conditions.",
+        agent=intent_understanding_agent,
+        human_input=False,
+        output_pydantic=IntentOutput,
+    )
+
+
+# Default task for backward compatibility
 task_intent = Task(
     name="intent_task",
     description=(
         "Analyze the user query and extract:\n"
         "1) operation\n"
         "2) metric_word\n"
-        "3) conditions\n"
+        "3) group_by\n"
+        "4) conditions\n"
         "Return ONLY a valid JSON."
     ),
-    expected_output="A JSON with keys: operation, metric_word, conditions.",
+    expected_output="A JSON with keys: operation, metric_word, group_by, conditions.",
     agent=intent_understanding_agent,
     human_input=False,
     output_pydantic=IntentOutput,
