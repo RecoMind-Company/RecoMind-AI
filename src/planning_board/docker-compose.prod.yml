@@ -1,0 +1,114 @@
+# ==================================
+# Docker Compose for Production
+# ==================================
+
+version: '3.8'
+
+services:
+  # ===========================================
+  # FastAPI Application (Production)
+  # ===========================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: planning-board-api
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - planning-network
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================
+  # Celery Worker (Production)
+  # ===========================================
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: planning-board-worker
+    environment:
+      - APP_ENV=production
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A workers.celery_app worker --loglevel=warning --concurrency=4 --queues=plan_generation,celery
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    networks:
+      - planning-network
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================
+  # Redis (Production)
+  # ===========================================
+  redis:
+    image: redis:7-alpine
+    container_name: planning-board-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - planning-network
+    restart: always
+
+networks:
+  planning-network:
+    driver: bridge
+
+volumes:
+  redis_data:
