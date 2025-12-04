@@ -31,7 +31,9 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="RecoMind AI Analyst API (with Celery)",
     description="API to trigger the full data analysis pipeline via a task queue.",
-    version="1.1.0"
+    version="1.1.0",
+    root_path="/reporting",
+    servers=[{"url": "/reporting"}]
 )
 
 # --- [MODIFICATION] Updated Pydantic Models ---
@@ -42,6 +44,7 @@ class AnalysisRequest(BaseModel):
     """
     company_id: str
     user_request: str
+    team_name: Optional[str] = None
 
 class TaskSubmitResponse(BaseModel):
     """
@@ -81,7 +84,8 @@ async def http_run_full_pipeline(request: AnalysisRequest):
         # This sends the task to the Redis queue and returns *immediately*.
         task = run_full_pipeline.delay(
             company_id=request.company_id,
-            user_request=request.user_request
+            user_request=request.user_request,
+            team_name=request.team_name
         )
         # --- [MODIFICATION END] ---
         
@@ -106,33 +110,42 @@ async def get_task_status(task_id: str):
     New endpoint for the client (.NET/Flutter) to poll
     and check the status of a running task.
     """
-    
-    # Get the task result from the Celery backend (Redis)
-    task_result = AsyncResult(task_id, app=celery_app)
-    
-    response_data = {
-        "task_id": task_id,
-        "status": task_result.status,
-        "result": None
-    }
-    
-    if task_result.successful():
-        # Task finished successfully
-        # The 'result' is the final report string
-        response_data["result"] = task_result.get()
+    try:
+        # Get the task result from the Celery backend (Redis)
+        task_result = AsyncResult(task_id, app=celery_app)
         
-    elif task_result.failed():
-        # Task failed with an exception
-        # 'result' will contain the error message
-        response_data["result"] (str(task_result.info)) # Get the exception info
+        response_data = {
+            "task_id": task_id,
+            "status": task_result.status,
+            "result": None
+        }
         
-    else:
-        # Task is still running (PENDING) or in progress
-        # 'result' will be the status update (e.g., "STAGE 2: Fetching Data...")
-        if task_result.info:
-            response_data["result"] = task_result.info.get('status', 'Running...')
+        if task_result.successful():
+            # Task finished successfully
+            # The 'result' is the final report string
+            response_data["result"] = task_result.get()
             
-    return TaskStatusResponse(**response_data)
+        elif task_result.failed():
+            # Task failed with an exception
+            # 'result' will contain the error message
+            response_data["result"] = str(task_result.info)  # Fixed: was missing '='
+            
+        else:
+            # Task is still running (PENDING) or in progress
+            # 'result' will be the status update (e.g., "STAGE 2: Fetching Data...")
+            if task_result.info and isinstance(task_result.info, dict):
+                response_data["result"] = task_result.info.get('status', 'Running...')
+                
+        return TaskStatusResponse(**response_data)
+        
+    except Exception as e:
+        logger.error(f"Error checking task status for {task_id}: {e}", exc_info=True)
+        # Return a proper error response instead of crashing
+        return TaskStatusResponse(
+            task_id=task_id,
+            status="ERROR",
+            result=f"Failed to check task status: {str(e)}"
+        )
 # --- [NEW ENDPOINT END] ---
 
 @app.get("/health", tags=["Monitoring"])
@@ -146,6 +159,6 @@ async def health_check():
 if __name__ == "__main__":
     print("--- Starting Uvicorn server (for testing) ---")
     print("--- DO NOT run this way in production ---")
-    print("--- Use: uvicorn api:app --reload --port 8000 ---")
-    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)
+    print("--- Use: uvicorn api:app --reload --port 8001 ---")
+    uvicorn.run("api:app", host="127.0.0.1", port=8001, reload=True)
 

@@ -1,0 +1,57 @@
+# Docker Compose for RecoMind Copilot Service
+# This file defines all services: Redis, API, and Celery Worker
+
+services:
+  
+  # Service 1: Redis Queue
+  redis:
+    image: redis:7-alpine
+    container_name: copilot-redis
+    hostname: copilot-redis
+    ports:
+      - "6380:6379"  # Use 6380 to avoid conflict with reporting_system
+    volumes:
+      - redis_data:/data
+
+  # Service 2: FastAPI API (Uvicorn)
+  api:
+    build: .
+    container_name: copilot-api
+    
+    # Load all variables from .env file
+    env_file:
+      - .env
+      
+    # Override specific variables for CrewAI compatibility
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_BASE=${BASE_URL}
+      - OPENAI_MODEL_NAME=${crewai_LLM_MODEL}
+      
+    ports:
+      - "8002:8002"  # Copilot API port
+    depends_on:
+      - redis
+
+  # Service 3: Celery Worker
+  worker:
+    build: .
+    container_name: copilot-worker
+    command: celery -A celery_worker.celery_app worker --loglevel=info -P gevent -Q copilot_queue
+    
+    # Load all variables from .env file
+    env_file:
+      - .env
+      
+    # Override specific variables for CrewAI compatibility
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_BASE=${BASE_URL}
+      - OPENAI_MODEL_NAME=${crewai_LLM_MODEL}
+
+    depends_on:
+      - redis
+      - api
+
+volumes:
+  redis_data:

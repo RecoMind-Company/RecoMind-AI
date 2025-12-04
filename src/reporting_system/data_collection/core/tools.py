@@ -48,6 +48,7 @@ class BaseSQLTool(BaseTool):
     vector_db_user: str = Field(description="PostgreSQL Vector DB user.")
     vector_db_password: str = Field(description="PostgreSQL Vector DB password.")
     company_id: str = Field(description="The unique ID of the client company.")
+    team_name: str | None = Field(default=None, description="Optional team name to filter tables (e.g., 'Sales').")
 
     def get_sql_conn_string(self):
         return (
@@ -89,16 +90,34 @@ class VectorDBTableSearchTool(BaseSQLTool):
             conn = psycopg2.connect(**self.get_vector_db_conn_params())
             cur = conn.cursor()
             
-            search_query = """
-            SELECT table_name, table_description, table_relations
-            FROM client_schema_vectors
-            WHERE company_id = %s
-            ORDER BY embedding <-> %s
-            LIMIT %s;
-            """
+            # Build the query dynamically based on whether team_name is provided
+            query_parts = [
+                "SELECT table_name, table_description, table_relations",
+                "FROM client_schema_vectors",
+                "WHERE company_id = %s"
+            ]
+            params = [self.company_id]
+
+            # Add team filter if provided
+            print(f"🔍 DEBUG: team_name received: '{self.team_name}' (Type: {type(self.team_name)})")
             
-            params = (self.company_id, query_embedding_str, SEARCH_LIMIT)
-            cur.execute(search_query, params)
+            if self.team_name:
+                print(f"🔍 Filtering tables by Team: {self.team_name}")
+                # Use ANY operator to search within the text array
+                query_parts.append("AND %s = ANY(team_name)")
+                params.append(self.team_name)
+            else:
+                print("🔍 No Team filter applied. Searching all tables.")
+
+            # Add ordering and limit
+            query_parts.append("ORDER BY embedding <-> %s")
+            query_parts.append("LIMIT %s;")
+            
+            params.append(query_embedding_str)
+            params.append(SEARCH_LIMIT)
+            
+            final_query = "\n".join(query_parts)
+            cur.execute(final_query, tuple(params))
 
             results = cur.fetchall()
             
