@@ -1,5 +1,5 @@
 # ===========================================
-# RecoMind NL-to-SQL Copilot - Requirements
+# RecoMind Copilot - Requirements
 # Generated with pipreqs + manual adjustments
 # ===========================================
 
@@ -7,6 +7,11 @@
 fastapi==0.123.5
 uvicorn==0.38.0
 python-dotenv==1.2.1
+
+# Task Queue (Celery + Redis)
+celery==5.5.3
+redis
+gevent
 
 # CrewAI Agent Framework
 crewai==1.6.1
@@ -22,3 +27,6 @@ pydantic==2.12.5
 
 # Embeddings for Vector Search
 sentence_transformers==5.1.1
+
+# LLM Router (for CrewAI OpenRouter support)
+litellm

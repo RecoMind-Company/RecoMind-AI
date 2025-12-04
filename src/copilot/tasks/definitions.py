@@ -47,15 +47,28 @@ def create_table_selection_task(
     """Create Task 2: Table Selection."""
     return Task(
         description=f"""
-Based on the intent analysis, find relevant tables:
+MANDATORY: You MUST use both tools before providing any answer. DO NOT guess or assume table names.
 
-1. Use get_allowed_tables tool with team_name="{team_name}"
-2. Use vector_db_table_search tool with the query_key from context
-3. Return only tables that are both relevant AND allowed
+STEP 1 - REQUIRED (execute this tool first):
+Call the get_allowed_tables tool with team_name="{team_name}"
+This will return the RBAC-permitted tables for this team.
 
-Return the list of relevant table names.
+STEP 2 - REQUIRED (execute this tool second):
+Call the vector_db_table_search tool with the query_key from the previous task's context.
+This will return semantically relevant tables.
+
+STEP 3 - Filter and Return:
+Only include tables that appear in BOTH the allowed tables (Step 1) AND the relevant tables (Step 2).
+
+CRITICAL RULES:
+- You MUST execute get_allowed_tables tool - DO NOT skip this step
+- You MUST execute vector_db_table_search tool - DO NOT skip this step  
+- NEVER guess table names like "Employee" or "Person" without calling the tools first
+- If you don't call both tools, your answer is INVALID
+
+Return the filtered list of relevant and allowed table names.
 """,
-        expected_output="List of relevant and allowed table names",
+        expected_output="List of relevant and allowed table names obtained from tool calls",
         agent=agent,
         context=context,
         output_pydantic=TableSelectionOutput,
