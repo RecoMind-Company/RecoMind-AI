@@ -82,14 +82,28 @@ def create_schema_fetcher_task(
     """Create Task 3: Schema Fetching."""
     return Task(
         description="""
-For each relevant table from the previous task:
+MANDATORY: You MUST use the get_available_columns tool for EACH table. DO NOT guess column names.
 
-1. Use get_available_columns tool to fetch column definitions
-2. Compile all schemas into a structured format
+STEP 1 - Get the table list:
+Extract the list of relevant tables from the previous task's context.
+
+STEP 2 - REQUIRED (execute for EACH table):
+For EACH table in the list, call the get_available_columns tool with the table_name parameter.
+This will return the actual column definitions from the database.
+
+STEP 3 - Compile results:
+Combine all the column schemas into a structured format.
+
+CRITICAL RULES:
+- You MUST call get_available_columns tool for EVERY table - DO NOT skip any
+- NEVER guess column names like "EmployeeID", "Name", "Salary" without calling the tool
+- NEVER assume what columns exist in a table
+- If you respond without calling the tool for each table, your answer is INVALID
+- Return the EXACT column information from the tool
 
 Return complete schema information for SQL generation.
 """,
-        expected_output="Complete column schemas for all relevant tables",
+        expected_output="Complete column schemas from get_available_columns tool for all relevant tables",
         agent=agent,
         context=context,
         output_pydantic=SchemaOutput,
@@ -129,15 +143,28 @@ def create_sql_execution_task(
     """Create Task 5: SQL Execution."""
     return Task(
         description="""
-Execute the SQL query from the previous task:
+MANDATORY: You MUST use the execute_sql_query tool. DO NOT make up or guess results.
 
-1. Validate it's a SELECT query
-2. Use execute_sql_query tool to run it
-3. Return the raw results
+STEP 1 - Get the SQL query:
+Extract the SQL query from the previous task's context.
 
-Handle any errors gracefully.
+STEP 2 - Validate (quick check):
+Make sure it starts with SELECT.
+
+STEP 3 - REQUIRED (execute this tool):
+Call the execute_sql_query tool with the raw_sql_query parameter.
+This will return the actual database results.
+
+CRITICAL RULES:
+- You MUST call execute_sql_query tool - DO NOT skip this step
+- NEVER guess or fabricate query results
+- NEVER say "the result is X" without actually running the query
+- If you respond without calling the tool, your answer is INVALID
+- Return the EXACT output from the tool, do not modify it
+
+Handle any errors from the tool gracefully.
 """,
-        expected_output="Raw query results or error message",
+        expected_output="Raw query results from execute_sql_query tool or error message",
         agent=agent,
         context=context,
         output_pydantic=SQLResultOutput,
@@ -161,12 +188,12 @@ CRITICAL RULES:
 2. ALWAYS make the response contextual to the user's question
 3. Include units, currency symbols, and proper formatting
 
-Examples of GOOD responses:
-- "You have 290 employees in your organization."
-- "The total revenue for 2014 was $22,419,500."
-- "There are 15 pending orders this month."
+Examples of GOOD response patterns:
+- "You have X items in your system."
+- "The total revenue is $X."
+- "There are X pending records this month."
 
-Create a helpful, contextual response.
+Create a helpful, contextual response based on the actual data returned.
 """,
         expected_output="User-friendly, contextual answer",
         agent=agent,
