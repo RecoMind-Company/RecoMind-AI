@@ -30,7 +30,7 @@ services:
   worker:
     build: .  # Use the *exact same* image
     container_name: recomind-ingestion-worker
-    command: celery -A celery_worker.celery_app worker --loglevel=info -P gevent
+    command: celery -A tasks.celery_app.celery_app worker --loglevel=info -P gevent
     env_file:
       - .env  # The worker also needs all the secrets
     depends_on:

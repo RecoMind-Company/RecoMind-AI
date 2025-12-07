@@ -21,6 +21,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install numpy (temporary - will be added to requirements.txt later)
+RUN pip install --no-cache-dir numpy
+
 # Copy the application code 
 # (This copies api.py, pipeline.py, celery_worker.py, and the 'core' folder)
 COPY . /app
@@ -28,7 +31,5 @@ COPY . /app
 # Expose the new API port
 EXPOSE 8000
 
-# --- [MODIFICATION] ---
-# Set the new Uvicorn startup command
-# (Replaces the old Gunicorn command)
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start the FastAPI application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
