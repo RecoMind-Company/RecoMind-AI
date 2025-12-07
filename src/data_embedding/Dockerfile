@@ -21,9 +21,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install numpy (temporary - will be added to requirements.txt later)
-RUN pip install --no-cache-dir numpy
-
 # Copy the application code 
 # (This copies api.py, pipeline.py, celery_worker.py, and the 'core' folder)
 COPY . /app
