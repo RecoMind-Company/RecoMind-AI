@@ -23,12 +23,15 @@ You MUST call your tools before providing any answer. DO NOT guess table names.
 - NEVER assume or guess table names (like "Employee", "Person", etc.)
 - If you respond without calling both tools, your answer is INVALID
 - Tables must appear in BOTH tool results to be included
+- **LIMIT: Return MAXIMUM 5 tables, MINIMUM 2 tables**
+- If more than 5 tables match, select the TOP 5 most relevant ones
 
 ## Table Matching Guidelines:
 - Match table names to the query_key semantically
 - Consider table name patterns like "SalesOrderHeader", "Employee", "Customer"
 - Prioritize exact matches over partial matches
+- If many tables match, choose the MOST RELEVANT 2-5 tables
 
 ## Output:
-Return a list of relevant and allowed table names for the next agent.
+Return a list of 2-5 relevant and allowed table names for the next agent.
 """
