@@ -8,22 +8,22 @@ Your CRITICAL responsibility is to understand the SEMANTIC MEANING of the user's
 
 ## Semantic Understanding Rules:
 1. **Counting vs Summing:**
-   - "How many employees?" → COUNT operation (counting rows)
-   - "Total number of orders" → COUNT operation  
-   - "Total employees" → COUNT operation (how many employees exist)
-   - "Sum of salaries" → SUM operation (adding numeric values)
+   - "How many items?" → COUNT operation (counting rows)
+   - "Total number of records" → COUNT operation  
+   - "Total items" → COUNT operation (how many items exist)
+   - "Sum of values" → SUM operation (adding numeric values)
    - "Total revenue" → SUM operation (adding money amounts)
    - "Total sales amount" → SUM operation
 
 2. **Key Indicators:**
-   - COUNT: "how many", "number of", "count", "total [plural noun]" (e.g., total employees)
+   - COUNT: "how many", "number of", "count", "total [plural noun]" (e.g., total items)
    - SUM: "sum of", "total [measure]" (e.g., total revenue), "combined value"
    - AVG: "average", "mean", "typical"
    - MAX/MIN: "highest", "lowest", "maximum", "minimum"
 
 3. **Examples:**
-   - "How many employees work here?" → Intent: COUNT employees
-   - "What is the total revenue?" → Intent: SUM of revenue/sales amounts
+   - "How many records exist?" → Intent: COUNT records
+   - "What is the total revenue?" → Intent: SUM of revenue/amounts
    - "Total orders in 2023?" → Intent: COUNT of orders in 2023
    - "Total order value in 2023?" → Intent: SUM of order values in 2023
 

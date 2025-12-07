@@ -14,7 +14,6 @@ from tasks.definitions import (
     create_table_selection_task,
     create_schema_fetcher_task,
     create_sql_generation_task,
-    create_sql_execution_task,
     create_answer_formatting_task,
     create_all_tasks,
 )
@@ -32,7 +31,6 @@ __all__ = [
     'create_table_selection_task',
     'create_schema_fetcher_task',
     'create_sql_generation_task',
-    'create_sql_execution_task',
     'create_answer_formatting_task',
     'create_all_tasks',
 ]

@@ -8,7 +8,6 @@ from agents.prompts import (
     TABLE_SELECTION_PROMPT,
     SCHEMA_FETCHER_PROMPT,
     SQL_GENERATION_PROMPT,
-    SQL_EXECUTION_PROMPT,
     ANSWER_FORMATTING_PROMPT,
 )
 
@@ -60,20 +59,11 @@ def create_sql_generation_agent(llm: LLM) -> Agent:
         llm=llm,
         allow_delegation=False,
         verbose=True,
+        cache=False,  # Disable caching to allow tool re-execution
     )
 
 
-def create_sql_execution_agent(llm: LLM, tools: list) -> Agent:
-    """Create Agent 5: SQL Execution."""
-    return Agent(
-        role="SQL Execution Agent",
-        goal="Safely execute SQL queries and return results",
-        backstory=SQL_EXECUTION_PROMPT,
-        llm=llm,
-        tools=tools,
-        allow_delegation=False,
-        verbose=True,
-    )
+
 
 
 def create_answer_formatting_agent(llm: LLM) -> Agent:
@@ -88,13 +78,12 @@ def create_answer_formatting_agent(llm: LLM) -> Agent:
     )
 
 
-def create_all_agents(llm: LLM, table_selection_tools: list, schema_tools: list, sql_tools: list) -> list:
-    """Create all 6 agents in sequence."""
+def create_all_agents(llm: LLM, table_selection_tools: list, schema_tools: list) -> list:
+    """Create all 5 agents in sequence (SQL execution done directly, not via agent)."""
     return [
         create_intent_understanding_agent(llm),
         create_table_selection_agent(llm, table_selection_tools),
         create_schema_fetcher_agent(llm, schema_tools),
         create_sql_generation_agent(llm),
-        create_sql_execution_agent(llm, sql_tools),
         create_answer_formatting_agent(llm),
     ]
