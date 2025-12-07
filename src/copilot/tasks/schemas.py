@@ -20,7 +20,7 @@ class TableSelectionOutput(BaseModel):
 
 class SchemaOutput(BaseModel):
     """Output from Schema Fetcher Agent."""
-    table_schemas: str = Field(description="JSON string of table schemas")
+    table_schemas: dict = Field(description="Dictionary of table schemas (table_name -> columns)")
 
 
 class SQLQueryOutput(BaseModel):
