@@ -4,6 +4,7 @@
 import json
 import traceback
 import pyodbc
+from typing import List
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, text
 from urllib.parse import quote_plus
@@ -13,6 +14,11 @@ from tools.base import BaseSQLTool
 class GetTableSchemaInput(BaseModel):
     """Input schema for schema tool."""
     table_name: str = Field(description="The full database table name (e.g. 'schema.table')")
+
+
+class GetMultipleTablesSchemasInput(BaseModel):
+    """Input schema for fetching multiple table schemas at once."""
+    table_names: List[str] = Field(description="List of full database table names (e.g. ['Sales.Customer', 'Person.Person'])")
 
 
 class GetAvailableColumnsTool(BaseSQLTool):
@@ -74,3 +80,73 @@ class GetAvailableColumnsTool(BaseSQLTool):
         except Exception as e:
             traceback.print_exc()
             return json.dumps([])
+
+
+class GetMultipleTablesSchemasTool(BaseSQLTool):
+    """Fetch columns and types for MULTIPLE tables at once from Source DB."""
+    
+    name: str = "get_multiple_tables_schemas"
+    description: str = "Fetch columns and types for MULTIPLE tables at once from Source DB. Much faster than calling get_available_columns multiple times."
+    args_schema: type[BaseModel] = GetMultipleTablesSchemasInput
+
+    def _get_sql_connection_string(self) -> str:
+        """Build ODBC connection string for SQL Server."""
+        drivers = [d for d in pyodbc.drivers() if "ODBC Driver" in d and "SQL Server" in d]
+        if not drivers:
+            raise Exception("No SQL Server ODBC driver installed!")
+        
+        driver = drivers[-1]
+        return (
+            f"DRIVER={{{driver}}};"
+            f"SERVER={self.db_server};"
+            f"DATABASE={self.db_database};"
+            f"UID={self.db_username};"
+            f"PWD={self.db_password};"
+            "Encrypt=yes;"
+            "TrustServerCertificate=no;"
+            "Connection Timeout=30;"
+        )
+
+    def _run(self, table_names: List[str]) -> str:
+        """Execute the tool for multiple tables."""
+        try:
+            if not table_names:
+                return json.dumps({})
+
+            # Build connection
+            odbc_connect = self._get_sql_connection_string()
+            encoded = quote_plus(odbc_connect)
+            conn_str = f"mssql+pyodbc:///?odbc_connect={encoded}"
+            engine = create_engine(conn_str, fast_executemany=True)
+
+            result = {}
+
+            for table_name in table_names:
+                if "." not in table_name:
+                    result[table_name] = []
+                    continue
+
+                schema, table = table_name.split(".", 1)
+
+                # Query columns
+                query = text("""
+                    SELECT c.name AS COLUMN_NAME, t.name AS DATA_TYPE
+                    FROM sys.columns c
+                    JOIN sys.types t ON c.user_type_id = t.user_type_id
+                    JOIN sys.tables tb ON c.object_id = tb.object_id
+                    JOIN sys.schemas s ON tb.schema_id = s.schema_id
+                    WHERE s.name = :schema AND tb.name = :table
+                    ORDER BY c.column_id
+                """)
+
+                with engine.connect() as conn:
+                    rows = conn.execute(query, {"schema": schema, "table": table}).fetchall()
+
+                columns = [{"name": row[0], "type": row[1]} for row in rows]
+                result[table_name] = columns
+
+            return json.dumps(result, indent=2)
+
+        except Exception as e:
+            traceback.print_exc()
+            return json.dumps({})
