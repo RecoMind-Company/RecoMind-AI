@@ -28,7 +28,5 @@ COPY . /app
 # Expose the new API port
 EXPOSE 8000
 
-# --- [MODIFICATION] ---
-# Set the new Uvicorn startup command
-# (Replaces the old Gunicorn command)
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start the FastAPI application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
