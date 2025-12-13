@@ -7,7 +7,6 @@ from tasks.schemas import (
     TableSelectionOutput,
     SchemaOutput,
     SQLQueryOutput,
-    SQLResultOutput,
     FinalAnswerOutput,
 )
 
@@ -57,18 +56,21 @@ STEP 2 - REQUIRED (execute this tool second):
 Call the vector_db_table_search tool with the query_key from the previous task's context.
 This will return semantically relevant tables.
 
-STEP 3 - Filter and Return:
+STEP 3 - Filter and Return (LIMIT: 2-5 tables):
 Only include tables that appear in BOTH the allowed tables (Step 1) AND the relevant tables (Step 2).
+If more than 5 tables match, select the TOP 5 MOST RELEVANT ones.
+You MUST return between 2 and 5 tables (not more, not less unless fewer than 2 exist).
 
 CRITICAL RULES:
 - You MUST execute get_allowed_tables tool - DO NOT skip this step
 - You MUST execute vector_db_table_search tool - DO NOT skip this step  
 - NEVER guess table names like "Employee" or "Person" without calling the tools first
 - If you don't call both tools, your answer is INVALID
+- **MAXIMUM 5 tables, MINIMUM 2 tables**
 
-Return the filtered list of relevant and allowed table names.
+Return the filtered list of 2-5 relevant and allowed table names.
 """,
-        expected_output="List of relevant and allowed table names obtained from tool calls",
+        expected_output="List of 2-5 relevant and allowed table names obtained from tool calls",
         agent=agent,
         context=context,
         output_pydantic=TableSelectionOutput,
@@ -82,14 +84,40 @@ def create_schema_fetcher_task(
     """Create Task 3: Schema Fetching."""
     return Task(
         description="""
-For each relevant table from the previous task:
+MANDATORY: You MUST use the get_multiple_tables_schemas tool to fetch ALL tables at ONCE.
 
-1. Use get_available_columns tool to fetch column definitions
-2. Compile all schemas into a structured format
+STEP 1 - Get the table list:
+Extract the list of relevant tables from the previous task's context.
+
+STEP 2 - REQUIRED (execute ONE time for ALL tables):
+Call the get_multiple_tables_schemas tool with table_names parameter as a LIST.
+Example: {"table_names": ["Sales.Customer", "Person.Person", "Sales.SalesOrderHeader"]}
+This will return ALL column definitions in ONE request - MUCH FASTER than calling get_available_columns multiple times.
+
+STEP 3 - Parse and Return:
+The tool returns a JSON string. Parse it into a dictionary and return it as-is.
+DO NOT wrap it in another JSON string - just return the parsed dictionary.
+
+CRITICAL RULES:
+- You MUST call get_multiple_tables_schemas tool ONCE with ALL tables - DO NOT call it multiple times
+- NEVER use get_available_columns unless get_multiple_tables_schemas fails
+- NEVER guess column names like "EmployeeID", "Name", "Salary" without calling the tool
+- NEVER assume what columns exist in a table
+- If you respond without calling the tool for each table, your answer is INVALID
+- Return the tool output as a DICTIONARY, not as a JSON string
+
+IMPORTANT OUTPUT FORMAT:
+Your final answer should be a dictionary like:
+{
+  "table_schemas": {
+    "Sales.Customer": [{"name": "CustomerID", "type": "int"}, ...],
+    "Person.Person": [{"name": "BusinessEntityID", "type": "int"}, ...]
+  }
+}
 
 Return complete schema information for SQL generation.
 """,
-        expected_output="Complete column schemas for all relevant tables",
+        expected_output="Dictionary with table_schemas containing column definitions for all relevant tables",
         agent=agent,
         context=context,
         output_pydantic=SchemaOutput,
@@ -122,26 +150,7 @@ Return only the SQL query.
     )
 
 
-def create_sql_execution_task(
-    agent: Agent,
-    context: list
-) -> Task:
-    """Create Task 5: SQL Execution."""
-    return Task(
-        description="""
-Execute the SQL query from the previous task:
 
-1. Validate it's a SELECT query
-2. Use execute_sql_query tool to run it
-3. Return the raw results
-
-Handle any errors gracefully.
-""",
-        expected_output="Raw query results or error message",
-        agent=agent,
-        context=context,
-        output_pydantic=SQLResultOutput,
-    )
 
 
 def create_answer_formatting_task(
@@ -161,12 +170,12 @@ CRITICAL RULES:
 2. ALWAYS make the response contextual to the user's question
 3. Include units, currency symbols, and proper formatting
 
-Examples of GOOD responses:
-- "You have 290 employees in your organization."
-- "The total revenue for 2014 was $22,419,500."
-- "There are 15 pending orders this month."
+Examples of GOOD response patterns:
+- "You have X items in your system."
+- "The total revenue is $X."
+- "There are X pending records this month."
 
-Create a helpful, contextual response.
+Create a helpful, contextual response based on the actual data returned.
 """,
         expected_output="User-friendly, contextual answer",
         agent=agent,
@@ -181,7 +190,7 @@ def create_all_tasks(
     team_name: str,
     date_context: str
 ) -> list:
-    """Create all 6 tasks with proper context chaining."""
+    """Create all 5 tasks with proper context chaining (SQL execution done directly in pipeline)."""
     
     # Task 1: Intent Understanding
     task1 = create_intent_understanding_task(
@@ -209,17 +218,11 @@ def create_all_tasks(
         context=[task1, task3],
     )
     
-    # Task 5: SQL Execution (depends on Task 4)
-    task5 = create_sql_execution_task(
+    # Task 5: Answer Formatting (depends on Task 1 and will receive SQL results from direct execution)
+    task5 = create_answer_formatting_task(
         agent=agents[4],
-        context=[task4],
-    )
-    
-    # Task 6: Answer Formatting (depends on Tasks 1, 5)
-    task6 = create_answer_formatting_task(
-        agent=agents[5],
         user_question=user_question,
-        context=[task1, task5],
+        context=[task1],
     )
     
-    return [task1, task2, task3, task4, task5, task6]
+    return [task1, task2, task3, task4, task5]
