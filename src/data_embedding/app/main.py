@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="RecoMind Data Embedding Pipeline",
     description="API to trigger data ingestion and team assignment pipeline via task queue.",
-    version="3.0.0"
+    version="3.0.0",
+    root_path="/embedding"
 )
 
 # Include routers
