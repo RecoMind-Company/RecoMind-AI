@@ -28,6 +28,7 @@ celery_app.conf.update(
     result_serializer='json',
     timezone='UTC',
     enable_utc=True,
+    task_default_queue='embedding_queue'
 )
 
 if __name__ == "__main__":
