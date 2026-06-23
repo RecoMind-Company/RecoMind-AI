@@ -104,9 +104,9 @@ class VectorDBTableSearchTool(BaseSQLTool):
             
             if self.team_name:
                 print(f"🔍 Filtering tables by Team: {self.team_name}")
-                # Use ANY operator to search within the text array
-                query_parts.append("AND %s = ANY(team_name)")
-                params.append(self.team_name)
+                # Use ILIKE for case-insensitive partial match inside the array
+                query_parts.append("AND EXISTS (SELECT 1 FROM unnest(team_name) t WHERE t ILIKE %s)")
+                params.append(f"%{self.team_name}%")
             else:
                 print("🔍 No Team filter applied. Searching all tables.")
 
@@ -122,8 +122,23 @@ class VectorDBTableSearchTool(BaseSQLTool):
 
             results = cur.fetchall()
             
+            # --- FALLBACK MECHANISM ---
+            if not results and self.team_name:
+                print(f"⚠️ No tables found for team '{self.team_name}'. Falling back to global search (all tables).")
+                query_parts_fallback = [
+                    "SELECT table_name, table_description, table_relations",
+                    "FROM client_schema_vectors",
+                    "WHERE company_id = %s",
+                    "ORDER BY embedding <-> %s",
+                    "LIMIT %s;"
+                ]
+                params_fallback = [self.company_id, query_embedding_str, SEARCH_LIMIT]
+                cur.execute("\n".join(query_parts_fallback), tuple(params_fallback))
+                results = cur.fetchall()
+
             if not results:
-                return "No relevant tables found in the vector database for this query key."
+                # If still no results, return a structured fallback so LLM doesn't hallucinate
+                return '{"error": "No tables found in vector database. Stop and report this failure."}'
 
             output = [f"--- Search Results (Top {SEARCH_LIMIT}) ---"]
             
