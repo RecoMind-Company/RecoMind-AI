@@ -24,11 +24,15 @@ RUN apt-get update \
 # --- Python Environment ---
 WORKDIR /app
 
+# Install uv for extremely fast dependency installation
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 # Copy requirements first for Docker cache optimization
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies using uv (utilizing build cache)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system -r requirements.txt
 
 # Copy application code
 COPY . .
