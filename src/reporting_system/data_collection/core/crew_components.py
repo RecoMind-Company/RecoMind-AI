@@ -15,7 +15,7 @@ from .agents import (
     column_selector_agent,
     query_generator_agent
 )
-from .tools import VectorDBTableSearchTool, GetTableSchemaTool
+from .tools import VectorDBTableSearchTool, GetTableSchemaTool, ExecuteSQLQueryTool, BaseSQLTool
 
 # Make sure you only import the 5 tasks you are using
 from .tasks import (
@@ -37,6 +37,7 @@ def get_configured_agents(tool_params: Dict[str, Any], llm) -> List:
     # Assign tools to specific agents
     retrieval_agent.tools = [VectorDBTableSearchTool(**tool_params)]
     schema_retriever_agent.tools = [GetTableSchemaTool(**tool_params)]
+    query_generator_agent.tools = [ExecuteSQLQueryTool(**tool_params)]
 
     # Define the NEW list of agents (ONLY 5)
     all_agents = [

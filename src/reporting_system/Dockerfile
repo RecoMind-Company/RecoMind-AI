@@ -39,8 +39,12 @@ COPY requirements.txt .
 # because we fixed the file locally in VS Code (by changing CRLF to LF)
 # --- [MODIFICATION END] ---
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install uv for extremely fast dependency installation
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Install Python dependencies using uv (utilizing build cache)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system -r requirements.txt
 
 # Copy the rest of the application code
 # (This copies api.py, pipeline.py, auto_analyst/, data_collection/, etc.)
