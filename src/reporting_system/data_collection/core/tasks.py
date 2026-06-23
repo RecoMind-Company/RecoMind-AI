@@ -82,15 +82,16 @@ task_generate_final_query = Task(
     description=(
         "You will receive a complete JSON string from the 'Column Selector' containing 'selected_columns', 'key_info', and 'full_schema_string'.\n"
         "Your MANDATORY process is:\n"
-        "1. Construct a base query using 'selected_columns' for the SELECT statement.\n"
-        "2. Use the 'key_info' object as the **absolute and ONLY source of truth** for constructing all join clauses.\n"
-        "3. **CRITICAL (USE LEFT JOIN):** You MUST use `LEFT JOIN` for all joins to ensure all data is retrieved.\n"
-        "4. **CRITICAL (NO LOGIC):** You are **STRICTLY FORBIDDEN** from using `WHERE`, `ORDER BY`, `GROUP BY`, `WITH`, or any aggregate functions (SUM, COUNT, etc.).\n"
-        "5. **CRITICAL (ALIASES):** You MUST check `selected_columns` for duplicate base names (e.g., `soh.SalesOrderID` and `sod.SalesOrderID`) or generic names (e.g., `prod.Name`). You **MUST** create unique `AS` aliases for them (e.g., `soh.SalesOrderID AS HeaderSalesOrderID`, `prod.Name AS ProductName`).\n"
-        "6. **CRITICAL (ESCAPE KEYWORDS):** You MUST wrap any SQL reserved keywords (like `Group`, `Order`, `Key`) in square brackets `[]` (e.g., `Sales.SalesTerritory.[Group]`).\n"
-        "7. Do NOT include a trailing semicolon (;) at the end."
+        "1. Construct a base query using 'selected_columns', 'key_info', keeping strict aliases.\n"
+        "2. **CRITICAL:** You MUST call the `execute_sql_query` tool passing your generated SQL to test it.\n"
+        "3. If the tool returns an error, use the error message and 'full_schema_string' to fix invalid columns/tables, then test again.\n"
+        "4. **CRITICAL (USE LEFT JOIN):** You MUST use `LEFT JOIN` for all joins to ensure all data is retrieved.\n"
+        "5. **CRITICAL (NO LOGIC):** You are **STRICTLY FORBIDDEN** from using `WHERE`, `ORDER BY`, `GROUP BY`, `WITH`, or any aggregate functions.\n"
+        "6. **CRITICAL (TABLE & COLUMN ALIASES):** You MUST assign a unique table alias to EVERY table... \n"
+        "7. **CRITICAL (ESCAPE KEYWORDS):** You MUST wrap any SQL reserved keywords in square brackets `[]`.\n"
+        "8. Return the final query ONLY when the tool returns 'SUCCESS!'. Do NOT include a trailing semicolon (;)."
     ),
-    expected_output="**ONLY** the final, raw SQL Server SELECT query string. All columns must have unique aliases and SQL keywords must be escaped with `[]`. NO other text, NO markdown, NO explanations.",
+    expected_output="**ONLY** the final, MATHEMATICALLY VALIDATED, raw SQL Server SELECT query string. NO other text, NO markdown.",
     agent=query_generator_agent,
     context=[task_select_columns]
 )

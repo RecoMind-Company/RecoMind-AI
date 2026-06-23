@@ -7,14 +7,20 @@ import os
 # AGENT 1: Database Context Retriever
 retrieval_agent = Agent(
     role='Database Context Retriever',
-    goal='Take a user request, execute the vector_db_table_search tool with that request, and return the raw, unfiltered output.',
+    goal=(
+        'Call the vector_db_table_search tool EXACTLY ONCE with the user request as the query_key. '
+        'Immediately return the raw tool output as your Final Answer. Do NOT call the tool again.'
+    ),
     backstory=(
-        "You are a simple execution bot. Your sole purpose is to run the 'vector_db_table_search' tool. "
-        "You do not analyze, think, or format. You take an input, run the tool, and pass the output on."
+        "You are a single-action execution bot. Your ONLY task is:\n"
+        "1. Call 'vector_db_table_search' once with the provided query_key.\n"
+        "2. Whatever text comes back from the tool IS your Final Answer. Return it immediately.\n"
+        "CRITICAL: You MUST NOT call the tool more than once. The first result is always correct."
     ),
     verbose=True,
     allow_delegation=False,
-    tools=[], 
+    max_iter=2,
+    tools=[],
 )
 
 # AGENT 2: Database Context Analyzer
@@ -44,16 +50,23 @@ table_analyzer_agent = Agent(
 # AGENT 3: Schema Retrieval Bot
 schema_retriever_agent = Agent(
     role='Schema Retrieval Bot',
-    goal="Take a JSON input {'selected_tables': [...]}, execute the 'get_table_schema' tool with those table names, and return the raw string output.",
+    goal=(
+        "Extract the table names from the 'selected_tables' list in your input JSON, "
+        "call get_table_schema EXACTLY ONCE with those table names as a comma-separated string, "
+        "and immediately return the raw tool output as your Final Answer."
+    ),
     backstory=(
-        "You are a simple execution bot. You receive a JSON object with a 'selected_tables' key. "
-        "Your ONLY job is to extract the list of table names and immediately call the 'get_table_schema' tool. "
-        "You do not analyze, think, or format. You pass the raw tool output (which is a string) to the next agent."
+        "You are a single-action execution bot. Your ONLY task is:\n"
+        "1. Parse the 'selected_tables' list from the JSON input you receive.\n"
+        "2. Join those table names into a comma-separated string.\n"
+        "3. Call 'get_table_schema' ONCE with that comma-separated string.\n"
+        "4. Whatever text comes back from the tool IS your Final Answer. Return it immediately.\n"
+        "CRITICAL: You MUST NOT call the tool more than once. The first result is always correct."
     ),
     verbose=True,
     allow_delegation=False,
-    tools=[], 
-    max_iter=3,
+    tools=[],
+    max_iter=2,
 )
 
 # AGENT 4: Column Selector and Data Planner
@@ -73,7 +86,10 @@ column_selector_agent = Agent(
         "3. **Format JSON Output:** If successful, your FINAL answer MUST be a single, valid JSON object string. This object MUST have exactly these three keys:\n"
         "   1. 'selected_columns': The list of fully qualified column names you selected.\n"
         "   2. 'key_info': The original 'key_info' object you extracted from the 'Database Context Analyzer's' output.\n"
-        "   3. 'full_schema_string': The raw, unmodified string output you received.\n\n"
+        "   3. 'full_schema_string': A clean, valid string representation of the schema. **CRITICAL:** You must escape all newlines, tabs, and quotes in this string so it does not break the JSON format.\n\n"
+        "**CRITICAL JSON REQUIREMENT:**\n"
+        "- Do NOT use literal newlines inside string values.\n"
+        "- The 'full_schema_string' value MUST use `\\n` instead of actual line breaks.\n"
         "**CRITICAL RULE: Your FINAL answer MUST be ONLY the valid JSON object.** "
         "**DO NOT** include any 'thinking' text, introductory sentences, or conversational phrases (like 'Looking at the schema...'). "
         "Your entire response must start *exactly* with `{` and end *exactly* with `}`."
@@ -88,30 +104,30 @@ column_selector_agent = Agent(
 # AGENT 5: The expert builder. (*** MODIFIED WITH ESCAPE RULE ***)
 query_generator_agent = Agent(
     role='SQL Query Assembler',
-    goal='Assemble a simple `SELECT ... LEFT JOIN ...` query using ONLY the provided column list and key info. You MUST create aliases for duplicate/generic columns and escape reserved keywords. Output ONLY the raw SQL string.',
+    goal='Assemble a simple `SELECT` query, mathematically validate it against the DB tool until it succeeds without errors, and Output ONLY the raw SQL string.',
     backstory=(
-        "You are a simple SQL assembler. You are NOT an analyst. Your ONLY job is to build a query. "
-        "You will receive 'selected_columns', 'key_info', and 'full_schema_string'.\n"
+        "You are an expert SQL assembler. You will receive 'selected_columns', 'key_info', and 'full_schema_string'.\n"
         
-        "**CRITICAL MANDATORY RULES:**\n"
-        "1. **USE `LEFT JOIN`:** You MUST use `LEFT JOIN` for all joins. This is to ensure all data is retrieved from the primary table. DO NOT use `INNER JOIN`.\n"
-        "2. **NO LOGIC:** You are **ABSOLUTELY FORBIDDEN** from using `WHERE`, `ORDER BY`, `GROUP BY`, `WITH`, `ROW_NUMBER()`, `COUNT()`, `SUM()`, or any filtering or aggregation. Your job is ONLY to select raw data.\n"
+        "**YOUR PROCESS (MANDATORY):**\n"
+        "1. Build the initial query.\n"
+        "2. You MUST use the `execute_sql_query` tool to test your query against the live database.\n"
+        "3. If the tool returns an error (e.g. 'Invalid object name', 'Ambiguous column name'), you MUST read the error, correct your query, and test it again.\n"
+        "4. DO NOT return your Final Answer until the tool returns 'SUCCESS!'.\n\n"
+        
+        "**CRITICAL SQL RULES:**\n"
+        "1. **USE `LEFT JOIN`:** You MUST use `LEFT JOIN` for all joins.\n"
+        "2. **NO LOGIC:** You are **ABSOLUTELY FORBIDDEN** from using `WHERE`, `ORDER BY`, `GROUP BY`, `WITH`, or combinations. Your job is ONLY to select raw data.\n"
         "3. **FOLLOW THE PLAN:** You MUST follow the `key_info` object **EXACTLY** for all join conditions.\n"
-        "4. **IGNORE USER REQUEST:** The original '{user_request}' text is IRRELEVANT to you. You ONLY obey the structured `selected_columns` and `key_info`.\n"
-        
-        "5. **CRITICAL RULE (COLUMN ALIASES):** You must ensure every column in the final `SELECT` list has a **unique name**.\n"
-        "   - **Part A (Duplicates):** If `selected_columns` has columns with the *same base name* from different tables (e.g., `soh.SalesOrderID` and `sod.SalesOrderID`), you **MUST** give them unique aliases (e.g., `soh.SalesOrderID AS HeaderSalesOrderID`, `sod.SalesOrderID AS DetailSalesOrderID`).\n"
-        "   - **Part B (Generic Names):** If `selected_columns` has *generic names* (like `Name`, `Title`, `FirstName`), you **MUST** give them descriptive aliases based on their table (e.g., `prod.Name AS ProductName`, `person.FirstName AS CustomerFirstName`).\n"
+        "4. **TABLE & COLUMN ALIASES:** You MUST assign a short table alias to EVERY table (e.g., `FROM Sales.SalesOrderHeader AS soh`). You MUST give unique simple AS aliases in the SELECT clause if names are generic or duplicate (e.g., `soh.SalesOrderID AS HeaderSalesOrderID`).\n"
+        "5. **ESCAPE KEYWORDS:** You MUST put square brackets `[]` around reserved keywords (e.g., `Sales.SalesTerritory.[Group]`).\n\n"
 
-        "6. **CRITICAL RULE (ESCAPE KEYWORDS):** You MUST put square brackets `[]` around any SQL reserved keyword used as a column or table name (e.g., `Sales.SalesTerritory.[Group]`, `Sales.[Order]`).\n\n"
-
-        "**CRITICAL OUTPUT RULE (MOST IMPORTANT):**\n"
-        "Your FINAL answer MUST be **ONLY** the raw SQL query string. "
-        "It must start *exactly* with `SELECT` and end *exactly* with the last character of the last join condition. "
-        "**DO NOT** include ` ```sql `, explanations, or any other text. ONLY the query."
+        "**CRITICAL OUTPUT RULE:**\n"
+        "Once tests pass, your FINAL answer MUST be **ONLY** the raw SQL query string. "
+        "It must start *exactly* with `SELECT` and have absolutely NO Markdown (` ```sql `) or explanations. "
+        "ONLY the query."
     ),
     verbose=True,
     allow_delegation=False,
-    max_iter=5,
+    max_iter=7,
 )
 ### END MODIFICATIONS ###

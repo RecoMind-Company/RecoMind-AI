@@ -10,6 +10,7 @@ import psycopg2
 import numpy as np
 import traceback
 import json
+import re
 from sentence_transformers import SentenceTransformer
 
 
@@ -182,3 +183,46 @@ class GetTableSchemaTool(BaseSQLTool):
         except Exception as e:
             traceback.print_exc()
             return f"Error fetching table schema: {e}"
+
+# =======================================================
+# 3. ExecuteSQLQueryTool
+# =======================================================
+class ExecuteSQLQueryInput(BaseModel):
+    query: str = Field(description="The SQL query to execute and test.")
+
+class ExecuteSQLQueryTool(BaseSQLTool):
+    name: str = "execute_sql_query"
+    description: str = (
+        "Executes a SQL SELECT query against the database and returns a small sample of the results, "
+        "or the exact SQL error message if it fails. "
+        "Use this tool to validate your generated SQL queries before giving your Final Answer."
+    )
+    args_schema: type[BaseModel] = ExecuteSQLQueryInput
+
+    def _run(self, query: str) -> str:
+        try:
+            # Clean up the query string (e.g. remove markdown)
+            query_str = str(query)
+            match = re.search(r'```(sql\s*)?([\s\S]*?)```', query_str, re.IGNORECASE)
+            if match:
+                query_str = match.group(2).strip()
+            else:
+                query_str = query_str.strip()
+
+            if not query_str.strip().upper().startswith('SELECT'):
+                return "Error: Query is not a valid SELECT statement."
+
+            odbc_connect = self.get_sql_conn_string()
+            cnxn = pyodbc.connect(odbc_connect)
+            
+            import warnings
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', message='.*pandas only supports SQLAlchemy connectable.*')
+                df = pd.read_sql(query_str, cnxn)
+            
+            cnxn.close()
+            num_rows = len(df)
+            return f"SUCCESS! Query returned {num_rows} rows. Sample data:\n" + df.head(3).to_string(index=False)
+            
+        except Exception as e:
+            return f"SQL EXECUTION ERROR: {str(e)}"

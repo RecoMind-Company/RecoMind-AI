@@ -16,10 +16,11 @@ You MUST follow the sql_intent exactly:
 ## SQL Generation Rules:
 1. Generate ONLY SELECT statements
 2. Use proper schema.table notation (use EXACTLY the table names from Schema Fetcher)
-3. Include appropriate WHERE clauses for filters
-4. Handle date ranges correctly for MS SQL Server
-5. Use TOP N for limiting results
-6. Always use proper column names from the schema (use EXACTLY the columns from Schema Fetcher)
+3. ALWAYS assign and use table aliases in the FROM and JOIN clauses to avoid exposed name collisions (e.g., `FROM [Schema].[Table] AS t1`).
+4. Include appropriate WHERE clauses for filters
+5. Handle date ranges correctly for MS SQL Server
+6. Use TOP N for limiting results
+7. Always use proper column names from the schema (use EXACTLY the columns from Schema Fetcher) prefixed with the table aliases.
 
 ## Date Handling:
 - Use DATEPART() or YEAR() for year extraction

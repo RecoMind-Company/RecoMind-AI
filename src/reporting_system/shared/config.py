@@ -22,6 +22,7 @@ def get_llm() -> LLM:
     # The 'llm_params' dictionary is where you control the model's behavior.
     llm_params = {
         "temperature": 0.0,
+        "max_retries": 10,
     }
 
     return LLM(
@@ -35,7 +36,9 @@ def get_llm() -> LLM:
 llm_model = ChatOpenAI(
     model=langgraph_LLM_MODEL,
     base_url=BASE_URL,
-    api_key=OPENROUTER_API_KEY
+    api_key=OPENROUTER_API_KEY,
+    max_retries=10,
+    timeout=120
 )
 
 # --- Static Configuration (Always Loaded) ---
