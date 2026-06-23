@@ -84,8 +84,6 @@ def process_chat_task(
             raise Exception(result["error"])
             
     except Exception as e:
-        # Update task state to FAILURE
-        self.update_state(state='FAILURE', meta={'status': str(e)})
         logger.error(f"Pipeline failed: {e}", exc_info=True)
         # Re-raise so Celery knows it failed
         raise e

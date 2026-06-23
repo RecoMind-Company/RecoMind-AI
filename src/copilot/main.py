@@ -48,7 +48,7 @@ class AsyncChatRequest(BaseModel):
     model_config = {
         "json_schema_extra": {
             "example": {
-                "company_id": "fb140d33-7e96-474d-a06d-ab3a6c65d1a9",
+                "company_id": "34293b50-0c58-4111-8fcd-b0127dd250ce",
                 "team_name": "Sales",
                 "user_question": "What is the total revenue in 2014?"
             }
