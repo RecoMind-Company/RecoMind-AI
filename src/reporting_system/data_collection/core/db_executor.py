@@ -58,7 +58,11 @@ def execute_query_to_dataframe(query: Any, db_settings: Dict[str, str]) -> Optio
         try:
             cnxn = pyodbc.connect(conn_string)
             
-            df = pd.read_sql(query_str, cnxn)
+            # Hide pandas UserWarning when passing raw DBAPI connection
+            import warnings
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', message='.*pandas only supports SQLAlchemy connectable.*')
+                df = pd.read_sql(query_str, cnxn)
             cnxn.close()
             
             return df # Success, exit the function
