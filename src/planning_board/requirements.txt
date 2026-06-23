@@ -24,7 +24,7 @@ langchain-anthropic==0.1.1
 
 # Celery & Redis
 celery[redis]==5.3.4
-redis==5.0.1
+redis==4.5.4
 flower==2.0.1  # Celery monitoring
 
 # Database (for caching/sessions if needed)

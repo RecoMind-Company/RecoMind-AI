@@ -7,7 +7,8 @@ FROM python:3.11-slim-bookworm
 
 # --- Install Microsoft ODBC Driver 17 for SQL Server ---
 # This is necessary for 'pyodbc' and 'aioodbc' to connect to MS SQL Server
-RUN apt-get update \
+RUN sed -i 's/deb.debian.org/cdn-fastly.deb.debian.org/g' /etc/apt/sources.list.d/debian.sources && \
+    apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
         gnupg \
