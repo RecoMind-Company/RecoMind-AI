@@ -1,0 +1,11 @@
+{
+    "strategy_type": "Business Expansion",
+    "decision_category": "Retail Business",
+    "primary_action": {
+        "action_type": "Open New Branch",
+        "details": {
+            "location": "Cairo",
+            "channel": "Physical"
+        }
+    }
+}
