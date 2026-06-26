@@ -14,7 +14,6 @@ langgraph
 numpy
 pandas
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.2.2
-sentence-transformers
+fastembed
 SQLAlchemy
 litellm
