@@ -1,11 +1,10 @@
 """
 Celery Tasks
 ============
-المهام الـ Async للـ Plan Generation
+Async tasks for Plan Generation
 """
 
 import asyncio
-from celery import current_task
 from loguru import logger
 
 from workers.celery_app import celery_app
@@ -26,57 +25,53 @@ def run_async(coro):
 def generate_plan_task(
     self,
     company_id: str,
-    team_name: str,
+    team_id: str,
     plan_text: str,
-    priority: str = "medium",
-    deadline_days: int = None
 ):
     """
-    Celery task لتوليد الخطة
-    يُستخدم للخطط الكبيرة التي تحتاج وقت طويل
+    Celery task for plan generation
+    Used for large plans that require long processing time
     """
     try:
-        logger.info(f"🚀 [Celery] Starting plan generation task: {self.request.id}")
-        
+        logger.info(f"[Celery] Starting plan generation task: {self.request.id}")
+
         # Update state to PROGRESS
         self.update_state(
             state="PROGRESS",
-            meta={"progress": 10, "status": "جاري جلب بيانات الموظفين..."}
+            meta={"progress": 10, "status": "Fetching employee data..."}
         )
-        
+
         # Initialize service
         service = PlanGeneratorService()
-        
+
         # Update progress
         self.update_state(
-            state="PROGRESS", 
-            meta={"progress": 30, "status": "جاري تحليل الخطة..."}
+            state="PROGRESS",
+            meta={"progress": 30, "status": "Analyzing plan..."}
         )
-        
+
         # Run async generation
         result = run_async(
             service.generate(
                 company_id=company_id,
-                team_name=team_name,
+                team_id=team_id,
                 plan_text=plan_text,
-                priority=priority,
-                deadline_days=deadline_days
             )
         )
-        
+
         # Update progress
         self.update_state(
             state="PROGRESS",
-            meta={"progress": 90, "status": "جاري إعداد النتيجة..."}
+            meta={"progress": 90, "status": "Preparing result..."}
         )
-        
-        logger.info(f"✅ [Celery] Task completed: {self.request.id}")
-        
+
+        logger.info(f"[Celery] Task completed: {self.request.id}")
+
         # Return result as dict
         return result.model_dump()
-        
+
     except Exception as e:
-        logger.exception(f"❌ [Celery] Task failed: {str(e)}")
+        logger.exception(f"[Celery] Task failed: {str(e)}")
         self.update_state(
             state="FAILURE",
             meta={"error": str(e)}
@@ -86,5 +81,5 @@ def generate_plan_task(
 
 @celery_app.task(name="health_check_task")
 def health_check_task():
-    """Task للتحقق من صحة الـ Worker"""
+    """Task to check worker health"""
     return {"status": "healthy", "worker": "planning_board"}

@@ -1,7 +1,7 @@
 """
 LLM Client
 ==========
-OpenRouter/OpenAI Client للتواصل مع الـ LLM
+OpenRouter/OpenAI Client for communicating with the LLM
 """
 
 import json
@@ -14,7 +14,7 @@ from core.exceptions import LLMException
 
 
 class LLMClient:
-    """Client للتواصل مع OpenRouter API"""
+    """Client for communicating with the OpenRouter API"""
     
     def __init__(self):
         self.client = AsyncOpenAI(

@@ -1,11 +1,10 @@
 """
 API Routes
 ==========
-Endpoints للـ Planning Board API
+Endpoints for the Planning Board API
 """
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 
 from api.dependencies import verify_api_key
@@ -34,45 +33,43 @@ router = APIRouter(tags=["Plans"])
         502: {"model": ErrorResponse, "description": "LLM service error"},
     },
     summary="Generate Tasks from Plan",
-    description="تحليل الخطة وتحويلها إلى مهام تنفيذية مع توزيع على الموظفين"
+    description="Analyze the plan and convert it into executable tasks with employee assignment"
 )
 async def generate_plan(
     request: PlanGenerateRequest,
     api_key: str = Depends(verify_api_key)
 ):
     """
-    توليد المهام من الخطة
-    
-    - **company_id**: معرف الشركة
-    - **team_name**: اسم الفريق/القسم
-    - **plan_text**: نص الخطة الاستراتيجية
+    Generate tasks from a plan
+
+    - **company_id**: Company ID
+    - **team_id**: Team ID
+    - **plan_text**: Strategic plan text
     """
     try:
-        logger.info(f"📥 Received plan generation request for team: {request.team_name}")
-        
+        logger.info(f"Received plan generation request for team_id: {request.team_id}")
+
         # Initialize service
         service = PlanGeneratorService()
-        
+
         # Generate plan
         result = await service.generate(
             company_id=request.company_id,
-            team_name=request.team_name,
+            team_id=request.team_id,
             plan_text=request.plan_text,
-            priority=request.priority,
-            deadline_days=request.deadline_days
         )
-        
-        logger.info(f"✅ Plan generated successfully: {result.plan_id}")
+
+        logger.info(f"Plan generated successfully: {result.plan_id}")
         return result
-        
+
     except PlanningBoardException as e:
-        logger.error(f"❌ Planning board error: {e.message}")
+        logger.error(f"Planning board error: {e.message}")
         raise HTTPException(
             status_code=e.status_code,
             detail={"error": type(e).__name__, "message": e.message, "details": e.details}
         )
     except Exception as e:
-        logger.exception(f"❌ Unexpected error: {str(e)}")
+        logger.exception(f"Unexpected error: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail={"error": "InternalError", "message": str(e)}
@@ -83,41 +80,39 @@ async def generate_plan(
     "/plans/generate/async",
     response_model=AsyncTaskResponse,
     summary="Generate Tasks Asynchronously",
-    description="توليد المهام بشكل غير متزامن (Celery)"
+    description="Generate tasks asynchronously (Celery)"
 )
 async def generate_plan_async(
     request: PlanGenerateRequest,
     api_key: str = Depends(verify_api_key)
 ):
     """
-    توليد المهام بشكل غير متزامن - للخطط الكبيرة
-    يرجع task_id للمتابعة
+    Generate tasks asynchronously - for large plans
+    Returns a task_id for tracking
     """
     try:
-        logger.info(f"📥 Received async plan generation request for team: {request.team_name}")
-        
+        logger.info(f"Received async plan generation request for team_id: {request.team_id}")
+
         # Import Celery task
         from workers.tasks import generate_plan_task
-        
+
         # Submit task to Celery
         task = generate_plan_task.delay(
             company_id=request.company_id,
-            team_name=request.team_name,
+            team_id=request.team_id,
             plan_text=request.plan_text,
-            priority=request.priority,
-            deadline_days=request.deadline_days
         )
-        
-        logger.info(f"📤 Task submitted: {task.id}")
-        
+
+        logger.info(f"Task submitted: {task.id}")
+
         return AsyncTaskResponse(
             task_id=task.id,
             status="pending",
-            message="تم استلام الطلب وجاري المعالجة"
+            message="Request received and processing"
         )
-        
+
     except Exception as e:
-        logger.exception(f"❌ Failed to submit async task: {str(e)}")
+        logger.exception(f"Failed to submit async task: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail={"error": "TaskSubmissionError", "message": str(e)}
@@ -128,25 +123,25 @@ async def generate_plan_async(
     "/plans/status/{task_id}",
     response_model=TaskStatusResponse,
     summary="Check Async Task Status",
-    description="متابعة حالة مهمة التوليد"
+    description="Track the status of a generation task"
 )
 async def get_task_status(
     task_id: str,
     api_key: str = Depends(verify_api_key)
 ):
     """
-    متابعة حالة مهمة التوليد الغير متزامنة
+    Track the status of an asynchronous generation task
     """
     try:
         from workers.celery_app import celery_app
-        
+
         task_result = celery_app.AsyncResult(task_id)
-        
+
         response = TaskStatusResponse(
             task_id=task_id,
             status=task_result.status
         )
-        
+
         if task_result.ready():
             if task_result.successful():
                 response.result = task_result.result
@@ -155,11 +150,11 @@ async def get_task_status(
                 response.error = str(task_result.result)
         elif task_result.status == "PROGRESS":
             response.progress = task_result.info.get("progress", 0)
-        
+
         return response
-        
+
     except Exception as e:
-        logger.exception(f"❌ Failed to get task status: {str(e)}")
+        logger.exception(f"Failed to get task status: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail={"error": "StatusCheckError", "message": str(e)}
@@ -169,7 +164,7 @@ async def get_task_status(
 @router.get(
     "/health",
     summary="Health Check",
-    description="فحص صحة الـ API"
+    description="Check API health"
 )
 async def health():
     """Health check endpoint"""

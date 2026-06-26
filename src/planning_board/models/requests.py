@@ -1,7 +1,7 @@
 """
 Pydantic Request Models
 =======================
-نماذج الـ Input للـ API
+API input models
 """
 
 from typing import Optional
@@ -11,58 +11,42 @@ from pydantic import BaseModel, Field
 class PlanGenerateRequest(BaseModel):
     """
     Request model for generating tasks from a plan
-    الـ Request اللي بييجي من .NET Backend
+    The request coming from .NET Backend
     """
-    
+
     company_id: str = Field(
         ...,
-        description="معرف الشركة",
+        description="Company ID",
         examples=["comp_A", "comp_123"]
     )
-    
-    team_name: str = Field(
+
+    team_id: str = Field(
         ...,
-        description="اسم الفريق/القسم",
-        examples=["Marketing", "Sales", "Engineering"]
+        description="Team ID",
+        examples=["team_123", "6f0e9b2c-1d7a-4a6e-9a0e-1c7c9f2a1111"]
     )
-    
+
     plan_text: str = Field(
         ...,
         min_length=10,
         max_length=10000,
-        description="نص الخطة الاستراتيجية",
-        examples=["إطلاق حملة إعلانية على مواقع التواصل الاجتماعي وقياس النتائج خلال شهرين"]
+        description="Strategic plan text",
+        examples=["Launch an advertising campaign on social media platforms and measure results over two months"]
     )
-    
-    # Optional: لو هنستخدمهم لاحقاً
-    priority: Optional[str] = Field(
-        default="medium",
-        description="أولوية الخطة",
-        examples=["low", "medium", "high"]
-    )
-    
-    deadline_days: Optional[int] = Field(
-        default=None,
-        ge=1,
-        le=365,
-        description="الموعد النهائي بالأيام (اختياري)"
-    )
-    
+
     class Config:
         json_schema_extra = {
             "example": {
-                "company_id": "comp_A",
-                "team_name": "Marketing",
-                "plan_text": "إطلاق حملة إعلانية على مواقع التواصل الاجتماعي وقياس النتائج خلال شهرين",
-                "priority": "high",
-                "deadline_days": 60
+                "company_id": "34293b50-0c58-4111-8fcd-b0127dd250ce",
+                "team_id": "0dc1400d-a758-424b-80fb-a8ff89078522",
+                "plan_text": "Increase company sales by 20% in the next quarter by targeting new customers, following up with potential customers, conducting product presentations, negotiating contracts, completing sales, then preparing a final report showing sales results and performance indicators"
             }
         }
 
 
 class TaskStatusUpdateRequest(BaseModel):
-    """Request for updating task status (للمستقبل)"""
-    
-    task_id: str = Field(..., description="معرف المهمة")
-    status: str = Field(..., description="الحالة الجديدة")
-    comment: Optional[str] = Field(None, description="تعليق اختياري")
+    """Request for updating task status (for future use)"""
+
+    task_id: str = Field(..., description="Task ID")
+    status: str = Field(..., description="New status")
+    comment: Optional[str] = Field(None, description="Optional comment")

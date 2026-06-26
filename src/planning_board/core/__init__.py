@@ -13,7 +13,7 @@ from core.exceptions import (
 __all__ = [
     "settings",
     "PlanningBoardException",
-    "LLMException", 
+    "LLMException",
     "EmployeeServiceException",
     "ValidationException",
 ]

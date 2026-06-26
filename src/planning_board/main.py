@@ -1,7 +1,7 @@
 """
 Planning Board - AI Backend
 ============================
-تحويل الخطط الاستراتيجية إلى مهام تنفيذية منظمة
+Convert strategic plans into organized executable tasks
 """
 
 from contextlib import asynccontextmanager
@@ -13,44 +13,50 @@ from api.routes import router as api_router
 from core.config import settings
 
 
+def _allowed_origins() -> list[str]:
+    return [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     # Startup
-    logger.info(f"🚀 Starting {settings.APP_NAME} in {settings.APP_ENV} mode")
-    logger.info(f"📡 API available at http://{settings.API_HOST}:{settings.API_PORT}{settings.API_PREFIX}")
-    
+    logger.info(f"Starting {settings.APP_NAME} in {settings.APP_ENV} mode")
+    logger.info(f"API available at http://{settings.API_HOST}:{settings.API_PORT}{settings.API_PREFIX}")
+
     yield
-    
+
     # Shutdown
-    logger.info(f"👋 Shutting down {settings.APP_NAME}")
+    logger.info(f"Shutting down {settings.APP_NAME}")
 
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application"""
-    
+
     app = FastAPI(
         title=settings.APP_NAME,
-        description="AI Backend for Planning Board - تحويل الخطط إلى مهام تنفيذية",
+        description="AI Backend for Planning Board",
         version="1.0.0",
         docs_url=f"{settings.API_PREFIX}/docs",
         redoc_url=f"{settings.API_PREFIX}/redoc",
         openapi_url=f"{settings.API_PREFIX}/openapi.json",
+        root_path=settings.ROOT_PATH,
+        servers=[{"url": settings.ROOT_PATH}],
         lifespan=lifespan,
     )
-    
+
     # CORS Middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure properly in production
+        allow_origins=_allowed_origins(),
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
-    
+
     # Include routers
     app.include_router(api_router, prefix=settings.API_PREFIX)
-    
+
     return app
 
 

@@ -1,7 +1,7 @@
 """
 Custom Exceptions
 =================
-استثناءات مخصصة للـ Planning Board
+Custom exceptions for Planning Board
 """
 
 from typing import Any, Dict, Optional
@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 
 class PlanningBoardException(Exception):
     """Base exception for Planning Board"""
-    
+
     def __init__(
         self,
         message: str,
@@ -24,7 +24,7 @@ class PlanningBoardException(Exception):
 
 class LLMException(PlanningBoardException):
     """Exception for LLM-related errors"""
-    
+
     def __init__(
         self,
         message: str = "LLM processing failed",
@@ -35,7 +35,7 @@ class LLMException(PlanningBoardException):
 
 class EmployeeServiceException(PlanningBoardException):
     """Exception for Employee Service errors"""
-    
+
     def __init__(
         self,
         message: str = "Failed to fetch employees",
@@ -46,7 +46,7 @@ class EmployeeServiceException(PlanningBoardException):
 
 class ValidationException(PlanningBoardException):
     """Exception for validation errors"""
-    
+
     def __init__(
         self,
         message: str = "Validation failed",
@@ -57,7 +57,7 @@ class ValidationException(PlanningBoardException):
 
 class TaskAssignmentException(PlanningBoardException):
     """Exception for task assignment errors"""
-    
+
     def __init__(
         self,
         message: str = "Task assignment failed",
@@ -68,7 +68,7 @@ class TaskAssignmentException(PlanningBoardException):
 
 class TimeoutException(PlanningBoardException):
     """Exception for timeout errors"""
-    
+
     def __init__(
         self,
         message: str = "Request timeout",

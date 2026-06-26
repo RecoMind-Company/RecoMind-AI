@@ -40,10 +40,10 @@ async def async_client() -> AsyncGenerator:
 def mock_employees() -> list[Employee]:
     """Mock employee data for testing"""
     return [
-        Employee(id="emp_01", name="أحمد", job_title="Marketing Specialist"),
-        Employee(id="emp_02", name="سارة", job_title="Content Writer"),
-        Employee(id="emp_03", name="محمد", job_title="Social Media Manager"),
-        Employee(id="emp_04", name="رنا", job_title="Graphic Designer"),
+        Employee(id="usr_01", name="Ahmed", job_title="Marketing Specialist"),
+        Employee(id="usr_02", name="Sara", job_title="Content Writer"),
+        Employee(id="usr_03", name="Mohamed", job_title="Social Media Manager"),
+        Employee(id="usr_04", name="Rana", job_title="Graphic Designer"),
     ]
 
 
@@ -51,12 +51,12 @@ def mock_employees() -> list[Employee]:
 def sample_plan_text() -> str:
     """Sample plan text for testing"""
     return """
-    إطلاق حملة إعلانية على مواقع التواصل الاجتماعي وقياس النتائج خلال شهرين.
-    
-    المراحل:
-    1. إعداد المحتوى: كتابة المنشورات وتصميم الصور
-    2. التنفيذ: نشر المحتوى على فيسبوك وإنستجرام
-    3. المتابعة: قياس النتائج وإعداد تقرير نهائي
+    Launch an advertising campaign on social media and measure results over two months.
+
+    Phases:
+    1. Content preparation: Write posts and design images
+    2. Execution: Publish content on Facebook and Instagram
+    3. Monitoring: Measure results and prepare a final report
     """
 
 
@@ -65,7 +65,6 @@ def sample_request_data(sample_plan_text) -> dict:
     """Sample request data for testing"""
     return {
         "company_id": "comp_test",
-        "team_name": "Marketing",
+        "team_id": "team_test",
         "plan_text": sample_plan_text,
-        "priority": "high"
     }

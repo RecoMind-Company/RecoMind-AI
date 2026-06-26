@@ -1,127 +1,51 @@
-# ==================================
-# Planning Board - Docker Compose
-# ==================================
-
-version: '3.8'
+# Docker Compose for RecoMind Planning Board Service
 
 services:
-  # ===========================================
-  # FastAPI Application
-  # ===========================================
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: planning-board-api
-    ports:
-      - "8000:8000"
-    environment:
-      - APP_ENV=development
-      - DEBUG=true
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    env_file:
-      - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - .:/app  # For development hot-reload
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-    networks:
-      - planning-network
-    restart: unless-stopped
-
-  # ===========================================
-  # Celery Worker
-  # ===========================================
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: planning-board-worker
-    environment:
-      - APP_ENV=development
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    env_file:
-      - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - .:/app
-    command: celery -A workers.celery_app worker --loglevel=info --queues=plan_generation,celery
-    networks:
-      - planning-network
-    restart: unless-stopped
-
-  # ===========================================
-  # Celery Beat (Scheduler) - Optional
-  # ===========================================
-  # beat:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: planning-board-beat
-  #   environment:
-  #     - CELERY_BROKER_URL=redis://redis:6379/0
-  #   env_file:
-  #     - .env
-  #   depends_on:
-  #     - redis
-  #   command: celery -A workers.celery_app beat --loglevel=info
-  #   networks:
-  #     - planning-network
-  #   restart: unless-stopped
-
-  # ===========================================
-  # Flower - Celery Monitoring
-  # ===========================================
-  flower:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: planning-board-flower
-    ports:
-      - "5555:5555"
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-    env_file:
-      - .env
-    depends_on:
-      - redis
-      - worker
-    command: celery -A workers.celery_app flower --port=5555
-    networks:
-      - planning-network
-    restart: unless-stopped
-
-  # ===========================================
-  # Redis
-  # ===========================================
   redis:
     image: redis:7-alpine
     container_name: planning-board-redis
+    hostname: planning-board-redis
     ports:
-      - "6379:6379"
+      - "6381:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - planning-network
-    restart: unless-stopped
 
-networks:
-  planning-network:
-    driver: bridge
+  api:
+    build: .
+    container_name: planning-board-api
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - API_PORT=8003
+      - ROOT_PATH=/planning_board
+      - REDIS_URL=redis://planning-board-redis:6379/0
+      - CELERY_BROKER_URL=redis://planning-board-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://planning-board-redis:6379/0
+      - CELERY_QUEUE_NAME=planning_board_queue
+    ports:
+      - "8003:8003"
+    depends_on:
+      - redis
+
+  worker:
+    build: .
+    container_name: planning-board-worker
+    command: celery -A workers.celery_app worker --loglevel=info -Q planning_board_queue
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - REDIS_URL=redis://planning-board-redis:6379/0
+      - CELERY_BROKER_URL=redis://planning-board-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://planning-board-redis:6379/0
+      - CELERY_QUEUE_NAME=planning_board_queue
+    depends_on:
+      - redis
+      - api
 
 volumes:
   redis_data:
