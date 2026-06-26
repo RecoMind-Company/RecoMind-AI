@@ -76,9 +76,11 @@ def create_crew(company_id: str, team_name: str = None) -> Crew:
         'team_name': team_name
     }
 
-    # 5. Get the agents and tasks
+    print(f"🔍 Creating data collection crew for company '{company_id}' and team '{team_name}'")
+
+    # 5. Get fresh agents and tasks for this request
     agents = get_configured_agents(tool_params, llm)
-    tasks = get_tasks()
+    tasks = get_tasks(agents)
 
     # 6. Assemble and return the final Crew
     final_crew = Crew(
@@ -90,4 +92,3 @@ def create_crew(company_id: str, team_name: str = None) -> Crew:
     )
     
     return final_crew, source_db_settings
-
