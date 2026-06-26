@@ -11,15 +11,15 @@ import numpy as np
 import traceback
 import json
 import re
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
 
 # Load the embedding model globally for the search tool
 MODEL_NAME = 'BAAI/bge-small-en-v1.5'
 try:
-    embedding_model = SentenceTransformer(MODEL_NAME)
+    embedding_model = TextEmbedding(model_name=MODEL_NAME)
 except Exception as e:
-    print(f"ERROR: Failed to load SentenceTransformer model '{MODEL_NAME}'. Search tool will fail. Error: {e}")
+    print(f"ERROR: Failed to load embedding model '{MODEL_NAME}'. Search tool will fail. Error: {e}")
     embedding_model = None 
 
 # =======================================================
@@ -85,7 +85,7 @@ class VectorDBTableSearchTool(BaseSQLTool):
         conn = None
         SEARCH_LIMIT = 12 
         try:
-            query_embedding = embedding_model.encode(query_key, normalize_embeddings=True)
+            query_embedding = next(embedding_model.embed([query_key]))
             query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
             
             conn = psycopg2.connect(**self.get_vector_db_conn_params())

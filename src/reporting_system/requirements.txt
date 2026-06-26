@@ -13,6 +13,6 @@ langchain-openai
 langgraph
 numpy
 pandas
-sentence-transformers
+fastembed
 SQLAlchemy
 litellm
