@@ -6,12 +6,12 @@ from typing import Any, Dict, List
 
 
 def clean_text(text: str) -> str:
-    """تنظيف النص من المسافات الزائدة"""
+    """Clean text from extra whitespace"""
     return " ".join(text.split())
 
 
 def safe_get(data: Dict, *keys, default: Any = None) -> Any:
-    """استخراج قيمة من dict متداخل بأمان"""
+    """Safely extract value from nested dict"""
     for key in keys:
         if isinstance(data, dict):
             data = data.get(key, default)
@@ -21,5 +21,5 @@ def safe_get(data: Dict, *keys, default: Any = None) -> Any:
 
 
 def chunk_list(lst: List, chunk_size: int) -> List[List]:
-    """تقسيم قائمة لـ chunks"""
+    """Split list into chunks"""
     return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]

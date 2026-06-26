@@ -1,79 +1,87 @@
 """
 Pydantic Response Models
 ========================
-نماذج الـ Output للـ API
+API output models
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from pydantic import BaseModel, Field
 
 
 class SuggestedOwner(BaseModel):
-    """الموظف المقترح للمهمة"""
-    
-    id: str = Field(..., description="معرف الموظف")
-    name: str = Field(..., description="اسم الموظف")
-    reason: str = Field(..., description="سبب الاختيار")
+    """Suggested owner for the task"""
+
+    user_id: str = Field(..., description="User ID from .NET API")
+    job_title: str = Field(..., description="Job title")
+    reason: str = Field(..., description="Reason for selection")
 
 
 class TaskResponse(BaseModel):
-    """نموذج المهمة في الـ Response"""
-    
-    task_id: str = Field(..., description="معرف المهمة")
-    title: str = Field(..., description="عنوان المهمة")
-    description: str = Field(..., description="وصف المهمة")
-    duration_days: int = Field(..., ge=1, description="المدة المقدرة بالأيام")
+    """Task model in the response"""
+
+    task_id: str = Field(..., description="Task ID")
+    title: str = Field(..., description="Task title")
+    description: str = Field(..., description="Task description")
+    duration_days: int = Field(..., ge=1, description="Estimated duration in days")
+    start_date: str = Field(..., description="Task start date (YYYY-MM-DD)")
+    deadline_date: str = Field(..., description="Task deadline date (YYYY-MM-DD)")
     suggested_owner: Optional[SuggestedOwner] = Field(
-        None, 
-        description="الموظف المقترح (null لو مفيش مناسب)"
+        None,
+        description="Suggested owner (null if no suitable match)"
     )
     reason: Optional[str] = Field(
         None,
-        description="سبب عدم وجود موظف مناسب (لو suggested_owner = null)"
+        description="Reason for no suitable owner (when suggested_owner = null)"
     )
     dependencies: List[str] = Field(
         default_factory=list,
-        description="قائمة الـ task_ids اللي المهمة دي تعتمد عليها"
+        description="List of task_ids this task depends on"
     )
-    status: str = Field(default="to_do", description="حالة المهمة")
-    priority: Optional[str] = Field(default="medium", description="الأولوية")
+    status: str = Field(default="to_do", description="Task status")
+    priority: str = Field(..., description="Task priority (high/low)")
 
 
 class ModuleResponse(BaseModel):
-    """نموذج الـ Module في الـ Response"""
-    
-    module_id: str = Field(..., description="معرف الـ Module")
-    module_name: str = Field(..., description="اسم الـ Module")
-    tasks: List[TaskResponse] = Field(..., description="قائمة المهام")
+    """Module model in the response"""
+
+    module_id: str = Field(..., description="Module ID")
+    module_name: str = Field(..., description="Module name")
+    tasks: List[TaskResponse] = Field(..., description="List of tasks")
 
 
 class TimelinePhase(BaseModel):
-    """مرحلة في الـ Timeline"""
-    
-    phase: str = Field(..., description="اسم المرحلة")
-    start_day: int = Field(..., ge=1, description="يوم البداية")
-    end_day: int = Field(..., ge=1, description="يوم النهاية")
+    """A phase in the timeline"""
+
+    phase: str = Field(..., description="Phase name")
+    start_day: int = Field(..., ge=1, description="Start day")
+    end_day: int = Field(..., ge=1, description="End day")
+    start_date: Optional[str] = Field(None, description="Phase start date (YYYY-MM-DD)")
+    end_date: Optional[str] = Field(None, description="Phase end date (YYYY-MM-DD)")
 
 
 class PlanGenerateResponse(BaseModel):
     """
     Response model for generated plan
-    الـ Response اللي بيرجع لـ .NET Backend
+    The response returned to .NET Backend
     """
-    
-    plan_id: str = Field(..., description="معرف الخطة")
-    plan_title: str = Field(..., description="عنوان الخطة")
-    status: str = Field(default="draft", description="حالة الخطة")
-    total_estimated_days: int = Field(..., description="إجمالي الأيام المقدرة")
-    modules: List[ModuleResponse] = Field(..., description="قائمة الـ Modules")
-    timeline: List[TimelinePhase] = Field(..., description="الجدول الزمني")
-    
+
+    plan_id: str = Field(..., description="Plan ID")
+    plan_title: str = Field(..., description="Plan title")
+    status: str = Field(default="draft", description="Plan status")
+    start_date: str = Field(..., description="Plan start date (YYYY-MM-DD)")
+    deadline_date: str = Field(..., description="Plan deadline date (YYYY-MM-DD)")
+    total_estimated_days: int = Field(..., description="Total estimated days")
+    modules: List[ModuleResponse] = Field(..., description="List of modules")
+    timeline: List[TimelinePhase] = Field(..., description="Timeline")
+
     class Config:
         json_schema_extra = {
             "example": {
                 "plan_id": "plan_701",
                 "plan_title": "Social Media Campaign Launch",
                 "status": "draft",
+                "start_date": "2026-06-26",
+                "deadline_date": "2026-08-25",
                 "total_estimated_days": 60,
                 "modules": [
                     {
@@ -82,22 +90,31 @@ class PlanGenerateResponse(BaseModel):
                         "tasks": [
                             {
                                 "task_id": "task_101",
-                                "title": "كتابة محتوى الإعلانات",
-                                "description": "كتابة 10 منشورات إعلانية لفيسبوك وإنستجرام",
+                                "title": "Write ad content",
+                                "description": "Write 10 advertising posts for Facebook and Instagram",
                                 "duration_days": 7,
+                                "start_date": "2026-06-26",
+                                "deadline_date": "2026-07-02",
                                 "suggested_owner": {
-                                    "id": "emp_02",
-                                    "name": "سارة",
+                                    "user_id": "usr_02",
+                                    "job_title": "Content Writer",
                                     "reason": "Job Title: Content Writer"
                                 },
                                 "dependencies": [],
-                                "status": "to_do"
+                                "status": "to_do",
+                                "priority": "high"
                             }
                         ]
                     }
                 ],
                 "timeline": [
-                    {"phase": "Content Prep", "start_day": 1, "end_day": 12}
+                    {
+                        "phase": "Content Prep",
+                        "start_day": 1,
+                        "end_day": 12,
+                        "start_date": "2026-06-26",
+                        "end_date": "2026-07-07"
+                    }
                 ]
             }
         }
@@ -105,25 +122,25 @@ class PlanGenerateResponse(BaseModel):
 
 class AsyncTaskResponse(BaseModel):
     """Response for async task submission (Celery)"""
-    
+
     task_id: str = Field(..., description="Celery Task ID")
-    status: str = Field(default="pending", description="حالة المهمة")
-    message: str = Field(..., description="رسالة توضيحية")
+    status: str = Field(default="pending", description="Task status")
+    message: str = Field(..., description="Informational message")
 
 
 class TaskStatusResponse(BaseModel):
     """Response for checking async task status"""
-    
+
     task_id: str = Field(..., description="Celery Task ID")
-    status: str = Field(..., description="حالة المهمة")
-    progress: Optional[int] = Field(None, ge=0, le=100, description="نسبة الإنجاز")
-    result: Optional[PlanGenerateResponse] = Field(None, description="النتيجة النهائية")
-    error: Optional[str] = Field(None, description="رسالة الخطأ لو فيه")
+    status: str = Field(..., description="Task status")
+    progress: Optional[int] = Field(None, ge=0, le=100, description="Progress percentage")
+    result: Optional[Any] = Field(None, description="Final result")
+    error: Optional[str] = Field(None, description="Error message if any")
 
 
 class ErrorResponse(BaseModel):
-    """نموذج رسالة الخطأ"""
-    
-    error: str = Field(..., description="نوع الخطأ")
-    message: str = Field(..., description="رسالة الخطأ")
-    details: Optional[dict] = Field(None, description="تفاصيل إضافية")
+    """Error message model"""
+
+    error: str = Field(..., description="Error type")
+    message: str = Field(..., description="Error message")
+    details: Optional[dict] = Field(None, description="Additional details")

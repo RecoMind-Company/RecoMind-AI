@@ -1,7 +1,7 @@
 """
 Timeline Generator Service
 ==========================
-بناء الجدول الزمني للخطة
+Build the timeline for the plan
 """
 
 from typing import List, Dict
@@ -11,79 +11,79 @@ from models.entities import Module, Task, TimelinePhase
 
 
 class TimelineGeneratorService:
-    """خدمة توليد الجدول الزمني"""
-    
+    """Timeline generation service"""
+
     def generate_timeline(
         self,
         modules: List[Module],
         start_day: int = 1
     ) -> List[TimelinePhase]:
         """
-        توليد الجدول الزمني بناءً على الـ Modules
-        
+        Generate the timeline based on Modules
+
         Args:
-            modules: قائمة الـ Modules
-            start_day: يوم البداية
-            
+            modules: List of Modules
+            start_day: Start day
+
         Returns:
-            قائمة مراحل الجدول الزمني
+            List of timeline phases
         """
         logger.info("📅 Generating timeline...")
-        
+
         timeline: List[TimelinePhase] = []
         current_day = start_day
-        
+
         for module in modules:
             if not module.tasks:
                 continue
-            
+
             # Calculate module duration
             module_duration = sum(task.duration_days for task in module.tasks)
-            
+
             # Handle dependencies (simplified - sequential within module)
             # In real scenario, we'd do proper dependency analysis
-            
+
             end_day = current_day + module_duration - 1
-            
+
             phase = TimelinePhase(
                 phase=module.module_name,
                 start_day=current_day,
                 end_day=end_day
             )
             timeline.append(phase)
-            
+
             # Next module starts after this one
             # Note: This is simplified. Real implementation would consider:
             # - Parallel modules
             # - Cross-module dependencies
             current_day = end_day + 1
-        
+
         logger.info(f"✅ Timeline generated: {len(timeline)} phases")
-        
+
         return timeline
-    
+
     def calculate_total_days(self, timeline: List[TimelinePhase]) -> int:
         """
-        حساب إجمالي عدد الأيام
+        Calculate total number of days
         """
         if not timeline:
             return 0
-        
+
         return max(phase.end_day for phase in timeline)
-    
+
     def generate_gantt_data(
         self,
         modules: List[Module],
         timeline: List[TimelinePhase]
     ) -> Dict:
         """
-        توليد بيانات Gantt Chart
+        Generate Gantt Chart data
         """
         gantt_data = {
             "phases": [],
             "tasks": []
         }
-        
+
         # Add phases
         for phase in timeline:
             gantt_data["phases"].append({
@@ -92,7 +92,7 @@ class TimelineGeneratorService:
                 "end": phase.end_day,
                 "duration": phase.end_day - phase.start_day + 1
             })
-        
+
         # Add tasks with their positions
         current_day = 1
         for module in modules:
@@ -108,7 +108,7 @@ class TimelineGeneratorService:
                     "dependencies": task.dependencies
                 })
                 current_day += task.duration_days
-        
+
         return gantt_data
 
 

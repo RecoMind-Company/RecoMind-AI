@@ -1,114 +1,52 @@
-# ==================================
-# Docker Compose for Production
-# ==================================
-
-version: '3.8'
+# Production compose for RecoMind Planning Board Service
 
 services:
-  # ===========================================
-  # FastAPI Application (Production)
-  # ===========================================
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: planning-board-api
-    ports:
-      - "8000:8000"
-    environment:
-      - APP_ENV=production
-      - DEBUG=false
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    env_file:
-      - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    networks:
-      - planning-network
-    restart: always
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # ===========================================
-  # Celery Worker (Production)
-  # ===========================================
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: planning-board-worker
-    environment:
-      - APP_ENV=production
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    env_file:
-      - .env
-    depends_on:
-      redis:
-        condition: service_healthy
-    command: celery -A workers.celery_app worker --loglevel=warning --concurrency=4 --queues=plan_generation,celery
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-    networks:
-      - planning-network
-    restart: always
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # ===========================================
-  # Redis (Production)
-  # ===========================================
   redis:
     image: redis:7-alpine
     container_name: planning-board-redis
-    ports:
-      - "6379:6379"
+    hostname: planning-board-redis
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-    networks:
-      - planning-network
     restart: always
 
-networks:
-  planning-network:
-    driver: bridge
+  api:
+    build: .
+    container_name: planning-board-api
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - API_PORT=8003
+      - ROOT_PATH=/planning_board
+      - REDIS_URL=redis://planning-board-redis:6379/0
+      - CELERY_BROKER_URL=redis://planning-board-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://planning-board-redis:6379/0
+      - CELERY_QUEUE_NAME=planning_board_queue
+    ports:
+      - "8003:8003"
+    depends_on:
+      - redis
+    restart: always
+
+  worker:
+    build: .
+    container_name: planning-board-worker
+    command: celery -A workers.celery_app worker --loglevel=warning -Q planning_board_queue
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - REDIS_URL=redis://planning-board-redis:6379/0
+      - CELERY_BROKER_URL=redis://planning-board-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://planning-board-redis:6379/0
+      - CELERY_QUEUE_NAME=planning_board_queue
+    depends_on:
+      - redis
+      - api
+    restart: always
 
 volumes:
   redis_data:

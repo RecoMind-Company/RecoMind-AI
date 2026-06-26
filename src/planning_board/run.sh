@@ -20,7 +20,7 @@ case "$1" in
     # Development
     dev)
         echo -e "${YELLOW}Starting development server...${NC}"
-        uvicorn main:app --reload --host 0.0.0.0 --port 8000
+        uvicorn main:app --reload --host 0.0.0.0 --port 8003
         ;;
     
     # Docker Development
@@ -38,7 +38,7 @@ case "$1" in
     # Celery Worker
     worker)
         echo -e "${YELLOW}Starting Celery worker...${NC}"
-        celery -A workers.celery_app worker --loglevel=info --queues=plan_generation,celery
+        celery -A workers.celery_app worker --loglevel=info -Q planning_board_queue
         ;;
     
     # Celery Flower (Monitoring)
