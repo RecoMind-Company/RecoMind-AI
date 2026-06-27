@@ -25,8 +25,6 @@ langchain-anthropic==0.1.1
 # Celery & Redis
 celery[redis]==5.4.0
 redis==5.0.1
-celery[redis]==5.3.4
-redis==4.5.4
 flower==2.0.1  # Celery monitoring
 
 # Database (for caching/sessions if needed)
@@ -46,7 +44,6 @@ sentry-sdk[fastapi]==1.39.1
 pytest==7.4.4
 pytest-asyncio==0.23.3
 pytest-cov==4.1.0
-httpx==0.26.0  # for TestClient
 
 # Development
 black==23.12.1
