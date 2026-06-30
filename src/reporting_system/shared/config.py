@@ -19,17 +19,13 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 # Enhanced LLM Configuration for Data Collection Crew
 def get_llm() -> LLM:
     """Creates and configures the Language Model for the crew."""
-    # The 'llm_params' dictionary is where you control the model's behavior.
-    llm_params = {
-        "temperature": 0.0,
-        "max_retries": 10,
-    }
-
     return LLM(
         model=crewai_LLM_MODEL,
         base_url=BASE_URL,
         api_key=OPENROUTER_API_KEY,
-        model_kwargs=llm_params 
+        temperature=0.0,
+        max_retries=10,
+        max_tokens=4096,
     )
 
 # Enhanced LLM Configuration for Auto Analyst
@@ -38,6 +34,7 @@ llm_model = ChatOpenAI(
     base_url=BASE_URL,
     api_key=OPENROUTER_API_KEY,
     max_retries=10,
+    max_tokens=4096,
     timeout=120
 )
 
