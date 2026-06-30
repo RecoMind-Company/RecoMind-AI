@@ -42,9 +42,9 @@ class AnalysisRequest(BaseModel):
     """
     The input model for the API request.
     """
-    company_id: str
-    user_request: str
-    team_name: Optional[str] = None
+    company_id: str = "34293b50-0c58-4111-8fcd-b0127dd250ce"
+    user_request: str = "Employees Performance Analysis"
+    team_name: Optional[str] = "HR"
 
 class TaskSubmitResponse(BaseModel):
     """
