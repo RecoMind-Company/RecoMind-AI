@@ -74,8 +74,17 @@ class DescriptionGenerator:
                 table_name = table_data['full_name']
                 description = description_map.get(table_name)
                 key_info_obj = table_data['key_info']
-                
+
                 if table_name and description:
+                    if isinstance(description, (dict, list)):
+                        logger.warning(
+                            f"LLM returned non-string description for {table_name} "
+                            f"(type={type(description).__name__}), serializing to JSON"
+                        )
+                        description = json.dumps(description)
+                    elif not isinstance(description, str):
+                        description = str(description)
+
                     data_to_ingest.append((
                         company_id,
                         table_name,

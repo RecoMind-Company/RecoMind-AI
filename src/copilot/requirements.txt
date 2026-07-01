@@ -10,7 +10,7 @@ python-dotenv==1.2.1
 
 # Task Queue (Celery + Redis)
 celery==5.5.3
-redis
+redis==4.5.4
 gevent
 
 # CrewAI Agent Framework

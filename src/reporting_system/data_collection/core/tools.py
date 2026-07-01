@@ -10,15 +10,16 @@ import psycopg2
 import numpy as np
 import traceback
 import json
-from sentence_transformers import SentenceTransformer
+import re
+from fastembed import TextEmbedding
 
 
 # Load the embedding model globally for the search tool
 MODEL_NAME = 'BAAI/bge-small-en-v1.5'
 try:
-    embedding_model = SentenceTransformer(MODEL_NAME)
+    embedding_model = TextEmbedding(model_name=MODEL_NAME)
 except Exception as e:
-    print(f"ERROR: Failed to load SentenceTransformer model '{MODEL_NAME}'. Search tool will fail. Error: {e}")
+    print(f"ERROR: Failed to load embedding model '{MODEL_NAME}'. Search tool will fail. Error: {e}")
     embedding_model = None 
 
 # =======================================================
@@ -84,7 +85,7 @@ class VectorDBTableSearchTool(BaseSQLTool):
         conn = None
         SEARCH_LIMIT = 12 
         try:
-            query_embedding = embedding_model.encode(query_key, normalize_embeddings=True)
+            query_embedding = next(embedding_model.embed([query_key]))
             query_embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
             
             conn = psycopg2.connect(**self.get_vector_db_conn_params())
@@ -103,9 +104,9 @@ class VectorDBTableSearchTool(BaseSQLTool):
             
             if self.team_name:
                 print(f"🔍 Filtering tables by Team: {self.team_name}")
-                # Use ANY operator to search within the text array
-                query_parts.append("AND %s = ANY(team_name)")
-                params.append(self.team_name)
+                # Use ILIKE for case-insensitive partial match inside the array
+                query_parts.append("AND EXISTS (SELECT 1 FROM unnest(team_name) t WHERE t ILIKE %s)")
+                params.append(f"%{self.team_name}%")
             else:
                 print("🔍 No Team filter applied. Searching all tables.")
 
@@ -121,8 +122,23 @@ class VectorDBTableSearchTool(BaseSQLTool):
 
             results = cur.fetchall()
             
+            # --- FALLBACK MECHANISM ---
+            if not results and self.team_name:
+                print(f"⚠️ No tables found for team '{self.team_name}'. Falling back to global search (all tables).")
+                query_parts_fallback = [
+                    "SELECT table_name, table_description, table_relations",
+                    "FROM client_schema_vectors",
+                    "WHERE company_id = %s",
+                    "ORDER BY embedding <-> %s",
+                    "LIMIT %s;"
+                ]
+                params_fallback = [self.company_id, query_embedding_str, SEARCH_LIMIT]
+                cur.execute("\n".join(query_parts_fallback), tuple(params_fallback))
+                results = cur.fetchall()
+
             if not results:
-                return "No relevant tables found in the vector database for this query key."
+                # If still no results, return a structured fallback so LLM doesn't hallucinate
+                return '{"error": "No tables found in vector database. Stop and report this failure."}'
 
             output = [f"--- Search Results (Top {SEARCH_LIMIT}) ---"]
             
@@ -182,3 +198,46 @@ class GetTableSchemaTool(BaseSQLTool):
         except Exception as e:
             traceback.print_exc()
             return f"Error fetching table schema: {e}"
+
+# =======================================================
+# 3. ExecuteSQLQueryTool
+# =======================================================
+class ExecuteSQLQueryInput(BaseModel):
+    query: str = Field(description="The SQL query to execute and test.")
+
+class ExecuteSQLQueryTool(BaseSQLTool):
+    name: str = "execute_sql_query"
+    description: str = (
+        "Executes a SQL SELECT query against the database and returns a small sample of the results, "
+        "or the exact SQL error message if it fails. "
+        "Use this tool to validate your generated SQL queries before giving your Final Answer."
+    )
+    args_schema: type[BaseModel] = ExecuteSQLQueryInput
+
+    def _run(self, query: str) -> str:
+        try:
+            # Clean up the query string (e.g. remove markdown)
+            query_str = str(query)
+            match = re.search(r'```(sql\s*)?([\s\S]*?)```', query_str, re.IGNORECASE)
+            if match:
+                query_str = match.group(2).strip()
+            else:
+                query_str = query_str.strip()
+
+            if not query_str.strip().upper().startswith('SELECT'):
+                return "Error: Query is not a valid SELECT statement."
+
+            odbc_connect = self.get_sql_conn_string()
+            cnxn = pyodbc.connect(odbc_connect)
+            
+            import warnings
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', message='.*pandas only supports SQLAlchemy connectable.*')
+                df = pd.read_sql(query_str, cnxn)
+            
+            cnxn.close()
+            num_rows = len(df)
+            return f"SUCCESS! Query returned {num_rows} rows. Sample data:\n" + df.head(3).to_string(index=False)
+            
+        except Exception as e:
+            return f"SQL EXECUTION ERROR: {str(e)}"

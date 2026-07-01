@@ -24,14 +24,17 @@ class EmbeddingService:
     def encode(self, text: str, normalize: bool = True) -> np.ndarray:
         """
         Generate embedding for a single text.
-        
+
         Args:
             text: Input text
             normalize: Whether to normalize the embedding
-        
+
         Returns:
             Numpy array of embedding vector
         """
+        if not isinstance(text, str):
+            logger.warning(f"Non-string input to encode (type={type(text).__name__}), coercing to str")
+            text = str(text)
         return self.model.encode(text, normalize_embeddings=normalize)
     
     def encode_batch(self, texts: List[str], normalize: bool = True) -> List[np.ndarray]:

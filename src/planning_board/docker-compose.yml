@@ -1,0 +1,51 @@
+# Docker Compose for RecoMind Planning Board Service
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: planning-board-redis
+    hostname: planning-board-redis
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  api:
+    build: .
+    container_name: planning-board-api
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - API_PORT=8003
+      - ROOT_PATH=/planning_board
+      - REDIS_URL=redis://planning-board-redis:6379/0
+      - CELERY_BROKER_URL=redis://planning-board-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://planning-board-redis:6379/0
+      - CELERY_QUEUE_NAME=planning_board_queue
+    ports:
+      - "8003:8003"
+    depends_on:
+      - redis
+
+  worker:
+    build: .
+    container_name: planning-board-worker
+    command: celery -A workers.celery_app worker --loglevel=info -Q planning_board_queue
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - REDIS_URL=redis://planning-board-redis:6379/0
+      - CELERY_BROKER_URL=redis://planning-board-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://planning-board-redis:6379/0
+      - CELERY_QUEUE_NAME=planning_board_queue
+    depends_on:
+      - redis
+      - api
+
+volumes:
+  redis_data:
