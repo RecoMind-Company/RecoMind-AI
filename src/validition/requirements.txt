@@ -1,0 +1,31 @@
+# ===========================================
+# Validation - Dependencies
+# ===========================================
+
+# FastAPI & Server
+fastapi==0.123.5
+uvicorn==0.38.0
+
+# CrewAI Agent Framework (manages pydantic, pydantic-settings, openai, etc.)
+crewai==1.6.1
+litellm
+
+# Async HTTP Client
+httpx
+
+# Celery & Redis
+celery==5.5.3
+redis==4.5.4
+flower==2.0.1
+
+# Utilities
+python-dotenv==1.2.1
+
+# Logging & Monitoring
+loguru==0.7.2
+sentry-sdk[fastapi]==1.39.1
+
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
