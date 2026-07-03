@@ -19,8 +19,9 @@ class StrategyStructuringService:
 
     def __init__(self):
         self._llm = LLM(
-            model=f"groq/{settings.GROQ_MODEL}",
-            api_key=settings.GROQ_API_KEY,
+            model=f"openrouter/{settings.OPENROUTER_MODEL}",
+            api_key=settings.OPENROUTER_API_KEY,
+            base_url=settings.OPENROUTER_BASE_URL,
             temperature=0,
         )
         self._agent = Agent(

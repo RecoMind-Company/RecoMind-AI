@@ -39,11 +39,11 @@ class Settings(BaseSettings):
     SERVICE_API_KEY: str = "validation-service-key-change-me"
 
     # ===========================================
-    # LLM Configuration (Groq)
+    # LLM Configuration (OpenRouter)
     # ===========================================
-    GROQ_API_KEY: str = ""
-    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
     LLM_TIMEOUT: int = 60
     LLM_MAX_RETRIES: int = 3
 
