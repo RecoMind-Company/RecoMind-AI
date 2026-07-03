@@ -1,7 +1,7 @@
 """
 LLM Client Module
 =================
-Unified LLM client for Groq API (OpenAI-compatible)
+Unified LLM client for OpenRouter API (OpenAI-compatible)
 """
 
 import json
@@ -16,16 +16,16 @@ from core.exceptions import LLMException
 
 
 class LLMClient:
-    """Async LLM client wrapping Groq's OpenAI-compatible API"""
+    """Async LLM client wrapping OpenRouter's OpenAI-compatible API"""
 
     def __init__(self):
         self._client = AsyncOpenAI(
-            api_key=settings.GROQ_API_KEY,
-            base_url=settings.GROQ_BASE_URL,
+            api_key=settings.OPENROUTER_API_KEY,
+            base_url=settings.OPENROUTER_BASE_URL,
             timeout=settings.LLM_TIMEOUT,
             max_retries=settings.LLM_MAX_RETRIES,
         )
-        self._model = settings.GROQ_MODEL
+        self._model = settings.OPENROUTER_MODEL
 
     async def generate(
         self,
