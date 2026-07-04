@@ -24,7 +24,6 @@ class AuthenticationClient:
     def __init__(self):
         self._token: Optional[str] = None
         self._token_obtained_at: Optional[float] = None
-        self._lock = asyncio.Lock()
 
     def _is_token_valid(self) -> bool:
         if not self._token or not self._token_obtained_at:
@@ -37,11 +36,8 @@ class AuthenticationClient:
         if self._is_token_valid():
             return self._token
 
-        async with self._lock:
-            if self._is_token_valid():
-                return self._token
-            await self._login()
-            return self._token
+        await self._login()
+        return self._token
 
     async def get_auth_headers(self) -> Dict[str, str]:
         """Return HTTP headers with the bearer token injected."""
