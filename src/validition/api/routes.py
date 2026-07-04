@@ -15,7 +15,6 @@ from models.responses import (
     TaskStatusResponse,
     ErrorResponse,
 )
-from services.validation_pipeline import ValidationPipelineService
 from core.exceptions import ValidationException
 
 
@@ -42,25 +41,62 @@ async def run_validation(
     api_key: str = Depends(verify_api_key),
 ):
     """
-    Run the full validation pipeline synchronously.
+    Run the full validation pipeline via Celery worker.
+
+    Dispatches the heavy LLM pipeline to the worker container and waits
+    for the result — keeping the same synchronous response for the .NET backend.
 
     - **company_id**: Company ID for automatic company info retrieval
     - **team_id**: Team ID for automatic report retrieval
     - **user_request**: Strategic plan or business decision text to validate
     """
+    import asyncio
+    from workers.tasks import run_validation_task
+    from workers.celery_app import celery_app
+
     try:
         logger.info(f"Validation request for company_id: {request.company_id}, team_id: {request.team_id}")
 
-        service = ValidationPipelineService()
-        result = await service.run(
+        # Dispatch to Celery worker
+        task = run_validation_task.delay(
             company_id=request.company_id,
             team_id=request.team_id,
             user_request=request.user_request,
         )
+        logger.info(f"Validation task dispatched to worker: {task.id}")
 
-        logger.info("Validation completed successfully")
-        return result
+        # Poll for result (non-blocking async loop)
+        poll_interval = 3  # seconds between polls
+        max_wait = 600     # 10 minutes max wait
+        elapsed = 0
 
+        while elapsed < max_wait:
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+
+            task_result = celery_app.AsyncResult(task.id)
+
+            if task_result.ready():
+                if task_result.successful():
+                    logger.info(f"Validation task {task.id} completed successfully")
+                    return ValidationResponse(**task_result.result)
+                else:
+                    error = str(task_result.result)
+                    logger.error(f"Validation task {task.id} failed: {error}")
+                    raise HTTPException(
+                        status_code=500,
+                        detail={"error": "WorkerError", "message": error},
+                    )
+
+        # Timeout
+        logger.error(f"Validation task {task.id} timed out after {max_wait}s")
+        raise HTTPException(
+            status_code=504,
+            detail={"error": "TaskTimeout", "message": "Validation timed out. Please try again."},
+        )
+
+    except HTTPException:
+        raise
     except ValidationException as e:
         logger.error(f"Validation error: {e.message}")
         raise HTTPException(
