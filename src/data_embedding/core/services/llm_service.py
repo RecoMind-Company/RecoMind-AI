@@ -92,5 +92,15 @@ class LLMService:
             import json
             return json.loads(response.content.strip())
         except Exception as e:
-            logger.error(f"LLM batch generation error: {e}")
+            error_text = str(e)
+            error_text_lower = error_text.lower()
+
+            if "402" in error_text_lower or "payment required" in error_text_lower or "credits" in error_text_lower:
+                logger.error(f"LLM credits exhausted or billing issue detected: {error_text}")
+                raise RuntimeError(
+                    "LLM request failed Due to running out of credits/problem Billing (HTTP 402). "
+                    "Please recharge OpenRouter credits or reduce request token usage."
+                ) from e
+
+            logger.error(f"LLM batch generation error: {error_text}")
             return {}
