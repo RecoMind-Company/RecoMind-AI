@@ -2,7 +2,7 @@
 """Configuration package."""
 
 from config.settings import (
-    OPENAI_API_KEY,
+    OPENROUTER_API_KEY,
     CREWAI_LLM_MODEL,
     VECTOR_DB_HOST,
     VECTOR_DB_NAME,
@@ -13,7 +13,7 @@ from config.settings import (
 from config.database import get_llm, get_vector_db_url, get_vector_db_params
 
 __all__ = [
-    'OPENAI_API_KEY',
+    'OPENROUTER_API_KEY',
     'CREWAI_LLM_MODEL',
     'VECTOR_DB_HOST',
     'VECTOR_DB_NAME',
