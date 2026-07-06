@@ -24,7 +24,7 @@ services:
       
     # Override specific variables for CrewAI compatibility
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENAI_API_BASE=${BASE_URL}
       - OPENAI_MODEL_NAME=${crewai_LLM_MODEL}
       
@@ -45,7 +45,7 @@ services:
       
     # Override specific variables for CrewAI compatibility
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENAI_API_BASE=${BASE_URL}
       - OPENAI_MODEL_NAME=${crewai_LLM_MODEL}
 

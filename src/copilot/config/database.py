@@ -4,7 +4,7 @@
 from urllib.parse import quote
 from crewai.llm import LLM
 from config.settings import (
-    OPENAI_API_KEY,
+    OPENROUTER_API_KEY,
     CREWAI_LLM_MODEL,
     BASE_URL,
     VECTOR_DB_HOST,
@@ -20,7 +20,7 @@ def get_llm() -> LLM:
     return LLM(
         model=CREWAI_LLM_MODEL,
         base_url=BASE_URL,
-        api_key=OPENAI_API_KEY,
+        api_key=OPENROUTER_API_KEY,
     )
 
 

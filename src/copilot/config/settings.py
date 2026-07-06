@@ -10,7 +10,7 @@ load_dotenv()
 # =============================================================================
 # LLM Configuration
 # =============================================================================
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 CREWAI_LLM_MODEL = os.getenv("crewai_LLM_MODEL", "gpt-3.5-turbo")
 BASE_URL = os.getenv("BASE_URL", "https://api.openai.com/v1")
 
