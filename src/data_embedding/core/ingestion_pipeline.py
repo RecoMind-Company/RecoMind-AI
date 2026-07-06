@@ -76,7 +76,11 @@ def run_ingestion_pipeline(company_id: str):
         if not teams_list:
             print("⚠ No teams found for this company. Skipping team assignment.")
             print("\n--- Ingestion Pipeline Completed (without team assignment)! ---")
-            return
+            return {
+                "status": "success",
+                "message": "Pipeline completed successfully without team assignment.",
+                "company_id": company_id,
+            }
         
         print(f"✓ Found {len(teams_list)} teams: {teams_list}")
         
@@ -116,6 +120,12 @@ def run_ingestion_pipeline(company_id: str):
     print("\n" + "=" * 70)
     print("✓✓✓ Complete Ingestion Pipeline Finished Successfully! ✓✓✓")
     print("=" * 70)
+
+    return {
+        "status": "success",
+        "message": f"Pipeline completed successfully for company {company_id}",
+        "company_id": company_id,
+    }
 
 
 if __name__ == "__main__":

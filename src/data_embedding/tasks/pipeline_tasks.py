@@ -50,13 +50,20 @@ def run_ingestion_pipeline_task(self, company_id: str) -> dict:
         logger.info(f"Celery task started: Running ingestion pipeline for company {company_id}")
         
         # Execute the pipeline
-        run_ingestion_pipeline(company_id)
+        result = run_ingestion_pipeline(company_id)
+
+        if isinstance(result, dict) and result.get("status") != "success":
+            error_message = result.get("message", f"Pipeline failed for company {company_id}")
+            raise RuntimeError(error_message)
+
+        if result is None:
+            raise RuntimeError(f"Pipeline returned no result for company {company_id}")
         
         logger.info(f"Celery task completed: Pipeline finished successfully for company {company_id}")
         
         return {
             "status": "success",
-            "message": f"Pipeline completed successfully for company {company_id}",
+            "message": result.get("message", f"Pipeline completed successfully for company {company_id}") if isinstance(result, dict) else f"Pipeline completed successfully for company {company_id}",
             "company_id": company_id
         }
     
@@ -66,4 +73,4 @@ def run_ingestion_pipeline_task(self, company_id: str) -> dict:
             meta={'status': str(e), 'company_id': company_id}
         )
         logger.error(f"Pipeline task failed for company {company_id}: {e}", exc_info=True)
-        raise e
+        raise

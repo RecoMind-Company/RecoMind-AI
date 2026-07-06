@@ -2,6 +2,7 @@
 LLM service for generating descriptions and team information
 """
 import logging
+import os
 from langchain_openai import ChatOpenAI
 from config import settings
 
@@ -18,14 +19,17 @@ class LLMService:
         """Initialize the LLM model"""
         if not settings.OPENROUTER_API_KEY:
             raise ValueError("OPENROUTER_API_KEY not found. Cannot initialize LLM service.")
+
+        max_tokens = int(os.getenv("OPENROUTER_MAX_TOKENS", "1024"))
         
         self.llm = ChatOpenAI(
             model=settings.LLM_MODEL_NAME,
             openai_api_key=settings.OPENROUTER_API_KEY,
             openai_api_base=settings.OPENROUTER_API_BASE,
-            temperature=0.1
+            temperature=0.1,
+            max_tokens=max_tokens
         )
-        logger.info(f"LLM Service initialized with model: {settings.LLM_MODEL_NAME}")
+        logger.info(f"LLM Service initialized with model: {settings.LLM_MODEL_NAME} (max_tokens={max_tokens})")
     
     def generate_team_description(self, team_name: str) -> str:
         """

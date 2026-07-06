@@ -63,24 +63,39 @@ async def get_task_status(task_id: str):
     Returns:
         TaskStatusResponse with current task status and result
     """
-    task_result = AsyncResult(task_id, app=celery_app)
-    
-    response_data = {
-        "task_id": task_id,
-        "status": task_result.status,
-        "result": None
-    }
-    
-    if task_result.successful():
-        response_data["result"] = task_result.get()
-    elif task_result.failed():
-        response_data["result"] = str(task_result.info)
-    else:
-        # Task is PENDING or PROGRESS
-        if task_result.info:
-            response_data["result"] = task_result.info.get('status', 'Running...')
-            
-    return TaskStatusResponse(**response_data)
+    try:
+        task_result = AsyncResult(task_id, app=celery_app)
+
+        response_data = {
+            "task_id": task_id,
+            "status": task_result.status,
+            "result": None,
+        }
+
+        if task_result.successful():
+            response_data["result"] = task_result.get()
+        elif task_result.failed():
+            error_info = task_result.info
+            if isinstance(error_info, dict):
+                response_data["result"] = error_info.get("status") or error_info.get("error") or str(error_info)
+            else:
+                response_data["result"] = str(error_info)
+        else:
+            # Task is PENDING or PROGRESS
+            if task_result.info:
+                if isinstance(task_result.info, dict):
+                    response_data["result"] = task_result.info.get('status', 'Running...')
+                else:
+                    response_data["result"] = str(task_result.info)
+
+        return TaskStatusResponse(**response_data)
+    except Exception as e:
+        logger.error(f"Error checking task status for {task_id}: {e}", exc_info=True)
+        return TaskStatusResponse(
+            task_id=task_id,
+            status="ERROR",
+            result=f"Failed to check task status: {str(e)}",
+        )
 
 
 @router.get("/health")
