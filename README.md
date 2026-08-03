@@ -30,6 +30,7 @@
 
 - [Project Overview](#project-overview)
 - [Key Features](#key-features)
+- [Demos And Screenshots](#demos-and-screenshots)
 - [Complete Architecture](#complete-architecture)
 - [Feature Deep Dives](#feature-deep-dives)
 - [AI Pipeline](#ai-pipeline)
@@ -46,7 +47,6 @@
 - [Security](#security)
 - [Scalability](#scalability)
 - [Design Patterns Used](#design-patterns-used)
-- [Screenshots](#screenshots)
 - [Future Improvements](#future-improvements)
 - [Contributing](#contributing)
 - [License](#license)
@@ -79,6 +79,36 @@ The business value is shorter time-to-insight, less dependency on manual SQL wor
 | Mock API Support | Return static payloads for .NET backend integration tests | FastAPI routers | Implemented for planning and validation |
 | Dockerized Workers | Run APIs and queue workers independently | Docker, Docker Compose, Redis, Celery | Implemented per service |
 
+## Demos And Screenshots
+
+Full recorded demos are available in the shared Google Drive folder:
+
+[Open RecoMind AI demos](https://drive.google.com/drive/folders/1FFEtBQVpKbs3HIBocXwBWs4EEAlrLvt2)
+
+### AI Copilot
+
+| Conversation | Query Result | Follow-up |
+| --- | --- | --- |
+| <img src="Imgs/Copilot%20chatbot/copilot-1.jpeg" alt="AI Copilot screenshot 1" width="280" /> | <img src="Imgs/Copilot%20chatbot/copilot-2.jpeg" alt="AI Copilot screenshot 2" width="280" /> | <img src="Imgs/Copilot%20chatbot/copilot-3.jpeg" alt="AI Copilot screenshot 3" width="280" /> |
+
+### Reporting System
+
+| Report Request | Analysis Output | Generated Insights |
+| --- | --- | --- |
+| <img src="Imgs/Reporting/reporting-1.jpeg" alt="Reporting screenshot 1" width="280" /> | <img src="Imgs/Reporting/reporting-2.jpeg" alt="Reporting screenshot 2" width="280" /> | <img src="Imgs/Reporting/reporting-3.jpeg" alt="Reporting screenshot 3" width="280" /> |
+
+### Planning Board
+
+| Plan Input | Generated Tasks | Task Details |
+| --- | --- | --- |
+| <img src="Imgs/Planning%20%26%20Tasks/planning-1.jpeg" alt="Planning Board screenshot 1" width="280" /> | <img src="Imgs/Planning%20%26%20Tasks/planning-2.jpeg" alt="Planning Board screenshot 2" width="280" /> | <img src="Imgs/Planning%20%26%20Tasks/planning-3.jpeg" alt="Planning Board screenshot 3" width="280" /> |
+
+### Validation
+
+| Validation Request | Engine Results | Final Report |
+| --- | --- | --- |
+| <img src="Imgs/Validation/validation-1.jpeg" alt="Validation screenshot 1" width="280" /> | <img src="Imgs/Validation/validation-2.jpeg" alt="Validation screenshot 2" width="280" /> | <img src="Imgs/Validation/validation-3.jpeg" alt="Validation screenshot 3" width="280" /> |
+
 ## Complete Architecture
 
 RecoMind AI is a service-oriented backend. Each feature owns its application, configuration, Dockerfile, queue worker, and request models. The shared runtime pattern is:
@@ -93,16 +123,16 @@ RecoMind AI is a service-oriented backend. Each feature owns its application, co
 
 ```mermaid
 flowchart LR
-    Client[Client or .NET Backend] --> API[FastAPI Services]
-    API --> Redis[(Redis Queues)]
-    Redis --> Worker[Celery Workers]
-    API --> DotNet[.NET Backend APIs]
+    Client["Client or Backend"] --> API["FastAPI Services"]
+    API --> Redis[("Redis Queues")]
+    Redis --> Worker["Celery Workers"]
+    API --> DotNet["Backend APIs"]
     Worker --> DotNet
-    Worker --> SourceDB[(Company SQL Server)]
-    Worker --> VectorDB[(PostgreSQL + pgvector)]
-    Worker --> LLM[OpenRouter / LLM Provider]
-    Worker --> Search[Serper / Web Search]
-    API --> Result[JSON Responses or Task Status]
+    Worker --> SourceDB[("Company SQL Server")]
+    Worker --> VectorDB[("PostgreSQL and pgvector")]
+    Worker --> LLM["OpenRouter LLM Provider"]
+    Worker --> Search["Serper Web Search"]
+    API --> Result["JSON Responses or Task Status"]
     Worker --> Result
 ```
 
@@ -112,10 +142,10 @@ flowchart LR
 sequenceDiagram
     participant User
     participant API as FastAPI
-    participant Queue as Redis/Celery
+    participant Queue as Redis and Celery
     participant Worker
     participant LLM as LLM
-    participant DB as SQL Server / pgvector
+    participant DB as SQL Server and pgvector
 
     User->>API: Submit request
     alt async endpoint
@@ -167,17 +197,17 @@ Natural-language analytics works only when the AI understands the company's sche
 
 ```mermaid
 flowchart TD
-    A[POST /start-pipeline] --> B[Celery task]
-    B --> C[Fetch source DB settings]
-    C --> D[Save settings for audit]
-    D --> E[Scan SQL Server tables, columns, PKs, FKs]
-    E --> F[Generate table descriptions with LLM]
-    F --> G[Encode descriptions with BAAI/bge-small-en-v1.5]
-    G --> H[Save to client_schema_vectors]
-    H --> I[Fetch company teams]
-    I --> J[Embed team names]
-    J --> K[Compute similarities]
-    K --> L[Update table team assignments]
+    A["POST /start-pipeline"] --> B["Celery task"]
+    B --> C["Fetch source DB settings"]
+    C --> D["Save settings for audit"]
+    D --> E["Scan SQL Server tables, columns, PKs, FKs"]
+    E --> F["Generate table descriptions with LLM"]
+    F --> G["Encode descriptions with bge-small-en-v1.5"]
+    G --> H["Save to client_schema_vectors"]
+    H --> I["Fetch company teams"]
+    I --> J["Embed team names"]
+    J --> K["Compute similarities"]
+    K --> L["Update table team assignments"]
 ```
 
 Important modules:
@@ -218,17 +248,17 @@ The copilot makes operational data accessible to non-SQL users while preserving 
 
 ```mermaid
 flowchart TD
-    A[User question] --> B[MetadataRepository: DB settings]
-    B --> C[Intent Understanding Agent]
-    C --> D[Table Selection Agent]
-    D --> E[RBAC allowed tables]
-    D --> F[Vector table search]
-    E --> G[Schema Fetcher Agent]
+    A["User question"] --> B["MetadataRepository DB settings"]
+    B --> C["Intent Understanding Agent"]
+    C --> D["Table Selection Agent"]
+    D --> E["RBAC allowed tables"]
+    D --> F["Vector table search"]
+    E --> G["Schema Fetcher Agent"]
     F --> G
-    G --> H[SQL Generation Agent]
-    H --> I[Direct SQL executor]
-    I --> J[Answer Formatting Agent]
-    J --> K[ChatResponse]
+    G --> H["SQL Generation Agent"]
+    H --> I["Direct SQL executor"]
+    I --> J["Answer Formatting Agent"]
+    J --> K["ChatResponse"]
 ```
 
 Important modules:
@@ -269,19 +299,19 @@ Instead of asking analysts to manually choose tables, write SQL, export data, ca
 
 ```mermaid
 flowchart TD
-    A[AnalysisRequest] --> B[Celery run_full_pipeline]
-    B --> C[CrewService]
-    C --> D[Vector DB table retrieval]
-    D --> E[Table analysis]
-    E --> F[Schema retrieval]
-    F --> G[Column selection]
-    G --> H[SQL query assembler]
-    H --> I[SourceDBRepository to DataFrame]
-    I --> J[LangGraph AnalystService]
-    J --> K[Data classification]
-    K --> L[Cleaning advisor/executor]
-    L --> M[KPI advisor/executor]
-    M --> N[Sales or employee report generator]
+    A["AnalysisRequest"] --> B["Celery run_full_pipeline"]
+    B --> C["CrewService"]
+    C --> D["Vector DB table retrieval"]
+    D --> E["Table analysis"]
+    E --> F["Schema retrieval"]
+    F --> G["Column selection"]
+    G --> H["SQL query assembler"]
+    H --> I["SourceDBRepository to DataFrame"]
+    I --> J["LangGraph AnalystService"]
+    J --> K["Data classification"]
+    K --> L["Cleaning advisor and executor"]
+    L --> M["KPI advisor and executor"]
+    M --> N["Sales or employee report generator"]
 ```
 
 Important modules:
@@ -298,14 +328,14 @@ Important modules:
 
 ```mermaid
 flowchart LR
-    Loader[data_identifier] --> Advisor[data_cleaning_advisor]
-    Advisor -->|cleaning plan| Executor[data_cleaning_executor]
-    Advisor -->|skip| KPIAdvisor[kpi_advisor]
+    Loader["data_identifier"] --> Advisor["data_cleaning_advisor"]
+    Advisor -->|"cleaning plan"| Executor["data_cleaning_executor"]
+    Advisor -->|"skip"| KPIAdvisor["kpi_advisor"]
     Executor --> KPIAdvisor
-    KPIAdvisor --> KPIExec[kpi_executor]
-    KPIExec -->|sales| Sales[sales report]
-    KPIExec -->|employees| Employees[employee report]
-    KPIExec -->|unknown| End[END]
+    KPIAdvisor --> KPIExec["kpi_executor"]
+    KPIExec -->|"sales"| Sales["sales report"]
+    KPIExec -->|"employees"| Employees["employee report"]
+    KPIExec -->|"unknown"| End["END"]
     Sales --> End
     Employees --> End
 ```
@@ -334,14 +364,14 @@ Strategic plans often fail at the handoff from idea to execution. This service c
 
 ```mermaid
 flowchart TD
-    A[Plan text] --> B[Fetch team employees]
-    B --> C[Plan parser LLM]
-    C --> D[Modules and tasks]
-    D --> E[Role matcher LLM]
-    E --> F[Assignment rebalancing]
-    F --> G[Sequential date calculation]
-    G --> H[Timeline generator]
-    H --> I[PlanGenerateResponse]
+    A["Plan text"] --> B["Fetch team employees"]
+    B --> C["Plan parser LLM"]
+    C --> D["Modules and tasks"]
+    D --> E["Role matcher LLM"]
+    E --> F["Assignment rebalancing"]
+    F --> G["Sequential date calculation"]
+    G --> H["Timeline generator"]
+    H --> I["PlanGenerateResponse"]
 ```
 
 Important modules:
@@ -378,20 +408,20 @@ The service gives stakeholders a structured pre-execution view: whether similar 
 
 ```mermaid
 flowchart TD
-    A[ValidationRequest] --> B[Phase 1 concurrent]
-    B --> C[Structure strategy]
-    B --> D[Fetch company info]
-    B --> E[Fetch recent reports]
-    C --> F[Phase 2 concurrent engines]
+    A["ValidationRequest"] --> B["Phase 1 concurrent"]
+    B --> C["Structure strategy"]
+    B --> D["Fetch company info"]
+    B --> E["Fetch recent reports"]
+    C --> F["Phase 2 concurrent engines"]
     D --> F
     E --> F
-    F --> G[Precedent engine]
-    F --> H[Resource simulator]
-    F --> I[Market trend engine]
-    G --> J[Final report generation]
+    F --> G["Precedent engine"]
+    F --> H["Resource simulator"]
+    F --> I["Market trend engine"]
+    G --> J["Final report generation"]
     H --> J
     I --> J
-    J --> K[ValidationResponse]
+    J --> K["ValidationResponse"]
 ```
 
 Important modules:
@@ -414,12 +444,12 @@ RecoMind uses `BAAI/bge-small-en-v1.5` through SentenceTransformers in both inge
 
 ```mermaid
 flowchart LR
-    Schema[SQL Server schema] --> Description[LLM table descriptions]
-    Description --> Embedding[SentenceTransformer embedding]
-    Embedding --> PgVector[(client_schema_vectors)]
-    Question[User question] --> QueryEmbedding[Query embedding]
+    Schema["SQL Server schema"] --> Description["LLM table descriptions"]
+    Description --> Embedding["SentenceTransformer embedding"]
+    Embedding --> PgVector[("client_schema_vectors")]
+    Question["User question"] --> QueryEmbedding["Query embedding"]
     QueryEmbedding --> PgVector
-    PgVector --> Tables[Relevant tables]
+    PgVector --> Tables["Relevant tables"]
 ```
 
 ### Prompt Engineering
@@ -793,9 +823,9 @@ Each service compose file follows the same model:
 
 ```mermaid
 flowchart LR
-    Redis[(Redis container)] --> Worker[Celery worker container]
-    API[FastAPI container] --> Redis
-    API --> External[External APIs / Databases / LLMs]
+    Redis[("Redis container")] --> Worker["Celery worker container"]
+    API["FastAPI container"] --> Redis
+    API --> External["External APIs, Databases, and LLMs"]
     Worker --> External
 ```
 
@@ -831,12 +861,12 @@ The intended operational order is:
 
 ```mermaid
 flowchart TD
-    A[Company DB settings] --> B[Embedding pipeline]
-    B --> C[Vector schema memory]
-    C --> D[Copilot Q&A]
-    C --> E[Reporting]
-    F[Strategy text] --> G[Validation]
-    F --> H[Planning Board]
+    A["Company DB settings"] --> B["Embedding pipeline"]
+    B --> C["Vector schema memory"]
+    C --> D["Copilot Q and A"]
+    C --> E["Reporting"]
+    F["Strategy text"] --> G["Validation"]
+    F --> H["Planning Board"]
     E --> G
     G --> H
 ```
@@ -894,16 +924,6 @@ Practical scaling levers:
 | Builder/Assembler | response builders in planning and validation | Converts internal entities into API DTOs |
 | Pipeline | embedding, reporting, validation, planning orchestrators | Expresses staged workflows with clear inputs and outputs |
 | Worker Queue | Celery task wrappers | Separates HTTP request handling from expensive work |
-
-## Screenshots
-
-Place screenshots here when UI or API client captures are available:
-
-- `docs/screenshots/copilot-chat.png`: Copilot request and answer.
-- `docs/screenshots/reporting-status.png`: Reporting task lifecycle.
-- `docs/screenshots/planning-board-output.png`: Generated modules and tasks.
-- `docs/screenshots/validation-report.png`: Validation decision and recommendations.
-- `docs/screenshots/embedding-pipeline.png`: Ingestion task completion.
 
 ## Future Improvements
 
