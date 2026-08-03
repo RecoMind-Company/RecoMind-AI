@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="Stars" src="https://img.shields.io/badge/stars-placeholder-lightgrey" />
-  <img alt="License" src="https://img.shields.io/badge/license-not%20specified-lightgrey" />
+    <img alt="License" src="https://img.shields.io/badge/license-MIT-blue" />
   <img alt="Python" src="https://img.shields.io/badge/python-3.10%20%7C%203.11-blue" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-services-009688" />
   <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED" />
@@ -947,11 +947,15 @@ Practical scaling levers:
 
 ## License
 
-The repository contains a `LICENSE` file, but it is currently empty. Add a concrete license before distributing this project as open source.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Authors
 
-RecoMind AI project maintainers and contributors.
+Hossam Taha
+
+- LinkedIn: https://l.facebook.com/l.php?u=http%3A%2F%2Fwww.linkedin.com%2Fin%2Fhossam-taha-41b724288%3Futm_source%3Dshare%26utm_campaign%3Dshare_via%26utm_content%3Dprofile%26utm_medium%3Dios_app%26fbclid%3DIwcGRvZgVleHRuA2FlbQIxMABicmlkETFTbGVYcmcxNGwxSUtJYjhHc3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHn_eQQhVjUZAwgd8-uf61P6mR2q2vICBGrGxMWHqwbqwgrKyDpdcxV3BYfye_aem_7cR2XfHo0A1sIQ-6l7yD0w&h=AUCVh658a2jy9--sgMQVee8T4V4JcbMPWMr4nfuGeg4mrCUQg9xegp7h8mB47w0JQsmn4fuc1MntztzBEI-VMoHzevIeYNE8GX8MoFQWqJAYkQpxJx2k0HBDIXFNyCdWokLTxw
+- Facebook: https://web.facebook.com/hossam.elsrah17
+- Email: hossamelsrah5@gmail.com
 
 ## Acknowledgments
 
