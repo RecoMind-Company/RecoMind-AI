@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="folderico-black.ico" width="96" alt="RecoMind logo placeholder" />
+  <img src="Imgs/Logo/Full%20Logo.svg" width="180" alt="RecoMind logo" />
 </p>
 
 <h1 align="center">RecoMind AI</h1>
