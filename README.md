@@ -2,8 +2,6 @@
   <img src="Imgs/Logo/Full%20Logo.svg" width="180" alt="RecoMind logo" />
 </p>
 
-<h1 align="center">RecoMind AI</h1>
-
 <p align="center">
   An AI-native business intelligence backend for schema embedding, natural-language analytics, automated reporting, planning, and strategic validation.
 </p>
