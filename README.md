@@ -951,7 +951,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 Hossam Taha
 
-- LinkedIn: https://l.facebook.com/l.php?u=http%3A%2F%2Fwww.linkedin.com%2Fin%2Fhossam-taha-41b724288%3Futm_source%3Dshare%26utm_campaign%3Dshare_via%26utm_content%3Dprofile%26utm_medium%3Dios_app%26fbclid%3DIwcGRvZgVleHRuA2FlbQIxMABicmlkETFTbGVYcmcxNGwxSUtJYjhHc3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHn_eQQhVjUZAwgd8-uf61P6mR2q2vICBGrGxMWHqwbqwgrKyDpdcxV3BYfye_aem_7cR2XfHo0A1sIQ-6l7yD0w&h=AUCVh658a2jy9--sgMQVee8T4V4JcbMPWMr4nfuGeg4mrCUQg9xegp7h8mB47w0JQsmn4fuc1MntztzBEI-VMoHzevIeYNE8GX8MoFQWqJAYkQpxJx2k0HBDIXFNyCdWokLTxw
+- LinkedIn: www.linkedin.com/in/hossam-taha-41b724288
 - Facebook: https://web.facebook.com/hossam.elsrah17
 - Email: hossamelsrah5@gmail.com
 
